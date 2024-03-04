@@ -1,22 +1,24 @@
 <div align="center">
-<h2>
+<h3>
 NOPE: Novel Object Pose Estimation from a Single Image
 <p></p>
-</h2>
+</h3>
 
-<h3>
+<h4>
 <a href="https://nv-nguyen.github.io/" target="_blank"><nobr>Van Nguyen Nguyen</nobr></a> &emsp;
 <a href="http://imagine.enpc.fr/~groueixt/" target="_blank"><nobr>Thibault Groueix</nobr></a> &emsp;
+<a href="hhttps://scholar.google.com/citations?user=5G-6ubcAAAAJ" target="_blank"><nobr>Georgy Ponimatkin</nobr></a> &emsp;
 <a href="https://yinlinhu.github.io/" target="_blank"><nobr>Yinlin Hu</nobr></a> &emsp; <br>
+<a href="https://imagine.enpc.fr/~marletr/" target="_blank"><nobr>Renaud Marlet</nobr></a> &emsp;
 <a href="https://people.epfl.ch/mathieu.salzmann" target="_blank"><nobr>Mathieu Salzmann</nobr></a> &emsp;
 <a href="https://vincentlepetit.github.io/" target="_blank"><nobr>Vincent Lepetit</nobr></a>
 
 <p></p>
 
 <a href="https://nv-nguyen.github.io/nope/"><img 
-src="https://img.shields.io/badge/-Webpage-blue.svg?colorA=333&logo=html5" height=35em></a>
+src="https://img.shields.io/badge/-Webpage-blue.svg?colorA=333&logo=html5" height=22em></a>
 <a href="https://arxiv.org/abs/2303.13612"><img 
-src="https://img.shields.io/badge/-Paper-blue.svg?colorA=333&logo=arxiv" height=35em></a>
+src="https://img.shields.io/badge/-Paper-blue.svg?colorA=333&logo=arxiv" height=22em></a>
 <p></p>
 
 <p align="center">
