@@ -1,13 +1,13 @@
 <div align="center">
-<h3>
+<h2>
 NOPE: Novel Object Pose Estimation from a Single Image
 <p></p>
-</h3>
+</h2>
 
 <h4>
 <a href="https://nv-nguyen.github.io/" target="_blank"><nobr>Van Nguyen Nguyen</nobr></a> &emsp;
 <a href="http://imagine.enpc.fr/~groueixt/" target="_blank"><nobr>Thibault Groueix</nobr></a> &emsp;
-<a href="hhttps://scholar.google.com/citations?user=5G-6ubcAAAAJ" target="_blank"><nobr>Georgy Ponimatkin</nobr></a> &emsp;
+<a href="https://github.com/ponimatkin/" target="_blank"><nobr>Georgy Ponimatkin</nobr></a> &emsp;
 <a href="https://yinlinhu.github.io/" target="_blank"><nobr>Yinlin Hu</nobr></a> &emsp; <br>
 <a href="https://imagine.enpc.fr/~marletr/" target="_blank"><nobr>Renaud Marlet</nobr></a> &emsp;
 <a href="https://people.epfl.ch/mathieu.salzmann" target="_blank"><nobr>Mathieu Salzmann</nobr></a> &emsp;
