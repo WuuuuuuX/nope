@@ -28,19 +28,20 @@ src="https://img.shields.io/badge/-Paper-blue.svg?colorA=333&logo=arxiv" height=
 
 If our project is helpful for your research, please consider citing : 
 ```latex
-@article{nguyen2023nope,
-title={NOPE: Novel Object Pose Estimation from a Single Image},
-author={Nguyen, Van Nguyen and Groueix, Thibault and Hu, Yinlin and Salzmann, Mathieu and Lepetit, Vincent},
-journal={arXiv preprint arXiv:2303.13612},
-year={2023}}
+@inproceedings{nguyen2024nope,
+title={{NOPE: Novel Object Pose Estimation from a Single Image}},
+author={Nguyen, Van Nguyen and Groueix, Thibault and Ponimatkin, Georgy and Hu, Yinlin and Marlet, Renaud and Salzmann, Mathieu and Lepetit, Vincent},
+booktitle={{Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition}}
+year=2024
+}
 ```
 You can also put a star :star:, if the code is useful to you.
 
 If you like this project, check out related works from our group:
+- [GigaPose: Fast and Robust Novel Object Pose Estimation via One Correspondence (CVPR 2024)](https://github.com/nv-nguyen/gigaPose) 
+- [CNOS: A Strong Baseline for CAD-based Novel Object Segmentation (ICCVW 2023)](https://github.com/nv-nguyen/cnos) 
 - [Templates for 3D Object Pose Estimation Revisited: Generalization to New objects and Robustness to Occlusions (CVPR 2022)](https://github.com/nv-nguyen/template-pose) 
-- [PIZZA: A Powerful Image-only Zero-Shot Zero-CAD Approach to 6DoF Tracking
-(3DV 2022)](https://github.com/nv-nguyen/pizza)
-- [BOP visualization toolkit](https://github.com/nv-nguyen/bop_viz_kit)
+- [PIZZA: A Powerful Image-only Zero-Shot Zero-CAD Approach to 6DoF Tracking (3DV 2022)](https://github.com/nv-nguyen/pizza)
 
 
 ![Teaser image](./media/framework.png)
@@ -94,6 +95,3 @@ python train.py name_exp=train
 
 </details>
 
-## TODO
-- Gradio demo on real images of unseen objects of TLESS, unseen categories of ShapeNet
-- Refactoring src/dataloader, src/model and Reproduce and sharing wandb logger of training
