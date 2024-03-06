@@ -3,18 +3,20 @@ defaults:
   - callback: base
   - model: vae_base
   - machine: local
-  - data: all
+  - data: shapeNet
   - _self_
-
-train_data_name:
-  - bop_texture
-  - shapeNet
-  - objaverse
-  - tless
-
-test_data_name:
-  - shapeNet
   
 use_pretrained: true
 save_dir: ${machine.root_dir}/results/${name_exp}
 name_exp: train_all
+
+# for download the data from huggingface
+only_sample: false
+
+# for renderings from scratch
+gpu_ids: "0,1,2,3"
+disable_output: true
+tless_like: false
+custom_blender_path: ${machine.root_dir}/blender/blender-3.5.1-linux-x64/
+start_index: 0
+end_index: 14000

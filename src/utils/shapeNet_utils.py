@@ -2,7 +2,7 @@ import os
 import json
 from src.poses.utils import get_root_project
 
-train_cats = [
+train_categories = [
     "airplane",
     "bench",
     "cabinet",
@@ -18,7 +18,7 @@ train_cats = [
     "watercraft",  # "vessel" in the paper
 ]
 
-test_cats = [
+test_categories = [
     "bottle",
     "bus",
     "clock",
@@ -34,9 +34,7 @@ test_cats = [
 
 def get_shapeNet_mapping():
     root_repo = get_root_project()
-    path_shapenet_id2cat = os.path.join(
-        root_repo, "src/utils/shapeNet_id2cat_v2.json"
-    )
+    path_shapenet_id2cat = os.path.join(root_repo, "src/utils/shapeNet_id2cat_v2.json")
     with open(path_shapenet_id2cat) as json_file:
         id2cat_mapping = json.load(json_file)
     # create inverse mapping

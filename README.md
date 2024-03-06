@@ -55,26 +55,49 @@ Abstract: *The practicality of 3D object pose estimation remains limited for man
 
 <details><summary>Click to expand</summary>
 
-This repository is running with the Weight and Bias logger. Ensure that you update this [user's configuration](https://github.com/nv-nguyen/nope/blob/main/configs/user/default.yaml) before conducting any experiments. 
-
 ### 1. Create conda environment
 ```
 conda env create -f environment.yml
 conda activate nope
 ```
-
 ### 2. Datasets
-Please note that the total dataset size is huge (~2TB). Before running the following commands, ensure that you have sufficient memory to handle this volume of data.
+By default, all the datasets and experiments are saved at $ROOT_DIR as defined in [this user's config](https://github.com/nv-nguyen/nope/blob/main/configs/user/default.yaml). 
 
-#### Option 1: Render dataset from scratch:
+
+We provide both pre-rendered datasets and scripts to render the datasets from scratch:
+
+#### Option 1: Download pre-rendered datasets from [HuggingFace hub](https://huggingface.co/datasets/nv-nguyen/nope):
 ```
-python -m src.scripts.generate_data --step select_cad --cad_dir $YOUR_CAD_DIR --save_dir $YOUR_SAVE_DIR
-python -m src.scripts.generate_data --step generate_poses_and_images --cad_dir $YOUR_CAD_DIR --save_dir $YOUR_SAVE_DIR
+# Download all the datasets:
+python -m src.scripts.download_preprocessed_shapenet
+
+# Download only a subset of samples (unseen instances of training categories):
+python -m src.scripts.download_preprocessed_shapenet only_sample=True
 ```
 
-#### Option 2: Contact the first authors to get the pre-rendered dataset
-Rendering the dataset from scratch may take several days or even a week, depending on your compute power. To facilitate easy reproducibility and experimentation with this repository, you can contact the first author to manage transferring the dataset (over SSH for example).
+#### Option 2: Render the datasets from scratch:
+```
+# Download ShapeNet models:
+python -m src.scripts.download_shapenet
 
+# Generate poses:
+python -m src.scripts.generate_poses_shapenet
+
+# Render images and templates:
+python -m src.scripts.render_images.shapenet
+python -m src.scripts.render_template_seen_shapenet
+python -m src.scripts.render_template_unseen_shapenet
+```
+Here is the structure of $ROOT_DIR after downloading:
+```
+├── $ROOT_DIR
+    ├── datasets/ 
+      ├── shapenet/ 
+        ├── test/ 
+        ├── templates/
+        ├── models/ # only for option 2
+    ├── pretrained/ 
+```
 </details>
 
 ##  Inference

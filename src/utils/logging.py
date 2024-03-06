@@ -1,6 +1,12 @@
 import logging
 
 
+def get_logger(name: str):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
+    return logger
+
+
 class LevelsFilter(logging.Filter):
     def __init__(self, levels):
         self.levels = [getattr(logging, level) for level in levels]
