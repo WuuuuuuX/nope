@@ -2,7 +2,6 @@ import math
 import torch
 import torch.nn as nn
 import numpy as np
-from einops import rearrange
 from src.model.u_net.ldm.attention import LinearAttention
 
 
@@ -348,7 +347,7 @@ class Decoder(nn.Module):
         self.tanh_out = tanh_out
 
         # compute in_ch_mult, block_in and curr_res at lowest res
-        in_ch_mult = (1,) + tuple(ch_mult)
+        (1,) + tuple(ch_mult)
         block_in = ch * ch_mult[self.num_resolutions - 1]
         curr_res = resolution // 2 ** (self.num_resolutions - 1)
         self.z_shape = (1, z_channels, curr_res, curr_res)
@@ -929,7 +928,7 @@ class Model(nn.Module):
 
 
 if __name__ == "__main__":
-    from omegaconf import DictConfig, OmegaConf
+    from omegaconf import OmegaConf
     from hydra.utils import instantiate
     import torch
     from src.model.u_net.guided_diffusion import dist_util

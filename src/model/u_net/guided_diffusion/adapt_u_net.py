@@ -1,11 +1,7 @@
-from abc import abstractmethod
 
-import math
 
-import numpy as np
 import torch as th
 import torch.nn as nn
-import torch.nn.functional as F
 
 from src.model.u_net.guided_diffusion.u_net import UNetModel
 
@@ -98,7 +94,7 @@ class UNetModelPose(UNetModel):
 
 
 if __name__ == "__main__":
-    from omegaconf import DictConfig, OmegaConf
+    from omegaconf import OmegaConf
     from hydra.utils import instantiate
     import torch
     from src.utils.weight import load_checkpoint

@@ -640,7 +640,7 @@ class UNetModel(pl.LightningModule):
 
 
 if __name__ == "__main__":
-    from omegaconf import DictConfig, OmegaConf
+    from omegaconf import OmegaConf
     from hydra.utils import instantiate
     import torch
     from src.model.u_net.guided_diffusion import dist_util

@@ -1,9 +1,6 @@
 import math
 import os
-import random
 import sys
-import time
-from typing import Tuple
 import bpy
 from mathutils import Vector, Matrix
 import numpy as np
@@ -122,11 +119,11 @@ def set_camera_focal_length_in_world_units(camera_data, focal_length):
     pixel_aspect_ratio = scene.render.pixel_aspect_x / scene.render.pixel_aspect_y
     if camera_data.sensor_fit == "VERTICAL":
         s_u = resolution_x_in_px * scale / sensor_width_in_mm / pixel_aspect_ratio
-        s_v = resolution_y_in_px * scale / sensor_height_in_mm
+        resolution_y_in_px * scale / sensor_height_in_mm
     else:  # 'HORIZONTAL' and 'AUTO'
         pixel_aspect_ratio = scene.render.pixel_aspect_x / scene.render.pixel_aspect_y
         s_u = resolution_x_in_px * scale / sensor_width_in_mm
-        s_v = resolution_y_in_px * scale * pixel_aspect_ratio / sensor_height_in_mm
+        resolution_y_in_px * scale * pixel_aspect_ratio / sensor_height_in_mm
 
     camera_data.lens = focal_length / s_u
 
@@ -175,7 +172,7 @@ class BlenderInterface:
                     if idx_light == 0:
                         name_light = "Light"
                     elif idx_light == 1:
-                        name_light = f"Point"
+                        name_light = "Point"
                     else:
                         name_light = f"Point.{idx_light:03d}"
                     add_lights(

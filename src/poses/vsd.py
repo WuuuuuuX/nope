@@ -1,7 +1,4 @@
-from torch.utils.data import Dataset
 import numpy as np
-import json
-from scipy.spatial.transform import Rotation as R
 from functools import partial
 import trimesh
 import pyrender
@@ -11,12 +8,9 @@ from src.poses.vsd_utils import (
     estimate_visib_mask_gt,
     estimate_visib_mask_est,
 )
-import logging
 import cv2
 import os
 
-import os
-from PIL import Image
 
 os.environ["DISPLAY"] = ":1"
 os.environ["PYOPENGL_PLATFORM"] = "egl"

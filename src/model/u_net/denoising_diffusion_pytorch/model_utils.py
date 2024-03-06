@@ -3,11 +3,9 @@ from torch import nn, einsum
 import torch
 import math
 from einops.layers.torch import Rearrange
-from einops import rearrange, reduce, repeat
+from einops import rearrange
 import torch.nn.functional as F
-from functools import partial
-import numpy as np
-from einops_exts import rearrange_many, repeat_many, check_shape
+from einops_exts import rearrange_many, repeat_many
 
 def softmax_inverse(x):
     return math.log(math.exp(x) - 1)
@@ -473,7 +471,7 @@ class CrossAttention(nn.Module):
         )
 
     def forward(self, x, context, mask=None):
-        b, n, device = *x.shape[:2], x.device
+        b, _n, _device = *x.shape[:2], x.device
 
         x = self.norm(x)
         context = self.norm_context(context)

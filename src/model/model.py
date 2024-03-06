@@ -1,24 +1,20 @@
 from tqdm import tqdm
 import torch
-import math
 import numpy as np
 from os import path
 import os
-from torch import nn
-from einops import rearrange, reduce
+from einops import reduce
 import torch.nn.functional as F
-from collections import namedtuple
 from functools import partial
 import pytorch_lightning as pl
-from torchvision import transforms as T, utils
+from torchvision import utils
 from src.utils.visualization_utils import (
     put_image_to_grid,
 )
-from torchvision import transforms, utils
 import logging
 from PIL import Image
 import os.path as osp
-from src.model.utils import unnormalize_to_zero_to_one, normalize_to_neg_one_to_one
+from src.model.utils import unnormalize_to_zero_to_one
 from src.model.loss import GeodesicError
 from src.model.normal_kl_loss import DiagonalGaussianDistribution
 import imageio
@@ -26,7 +22,6 @@ import wandb
 import multiprocessing
 import time
 from src.poses.vsd import vsd_obj
-from src.utils.inout import save_json, casting_format_to_save_json
 
 
 class PoseConditional(pl.LightningModule):
@@ -271,7 +266,7 @@ class PoseConditional(pl.LightningModule):
             and callable(self.u_net.encoder.decode_latent)
         ):
             visualize = False
-            logging.info(f"Setting visualize=False!")
+            logging.info("Setting visualize=False!")
         print("eval_geodesic", visualize)
         # visualize same loss as training
         query = batch["query"]

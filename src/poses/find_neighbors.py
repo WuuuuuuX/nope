@@ -4,10 +4,8 @@ import os
 from src.poses.utils import (
     get_obj_poses_from_template_level,
     get_root_project,
-    load_index_level0_in_level2,
     NearestTemplateFinder,
 )
-import os.path as osp
 # from src.utils.vis_3d_utils import convert_numpy_to_open3d, draw_camera
 
 if __name__ == "__main__":

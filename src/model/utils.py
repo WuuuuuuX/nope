@@ -5,7 +5,7 @@ import torch
 
 
 def normalize_to_neg_one_to_one(img):
-    tmp = img.clone()
+    img.clone()
     return img * 2 - 1
 
 
@@ -24,7 +24,7 @@ def get_obj_from_str(string, reload=False):
 
 
 def instantiate_from_config(config):
-    if not "target" in config:
+    if "target" not in config:
         if config == "__is_first_stage__":
             return None
         elif config == "__is_unconditional__":
@@ -54,7 +54,6 @@ class SinusoidalPosEmb(nn.Module):
 
 if __name__ == "__main__":
     from rich import print
-    from src.model.encoder.AutoencoderKL import VAE_StableDiffusion
 
     mapping = SinusoidalPosEmb(60)
     classes = torch.rand((8, 6)).cuda()

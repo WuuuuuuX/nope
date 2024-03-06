@@ -4,11 +4,10 @@ import torch.nn.functional as F
 os.environ["MPLCONFIGDIR"] = os.getcwd() + "./tmp/"
 import matplotlib.pyplot as plt
 import matplotlib
-from torchvision import transforms, utils
+from torchvision import transforms
 import torch
 from PIL import Image
 import numpy as np
-import io
 from moviepy.video.io.bindings import mplfig_to_npimage
 import cv2
 
@@ -143,7 +142,7 @@ def write_text(
 ):
     img = Image.open(img_path)
     img_size = np.array(img.size)
-    ncol, nrow = int(img_size[0] / sample_size), int(img_size[1] / sample_size)
+    _ncol, nrow = int(img_size[0] / sample_size), int(img_size[1] / sample_size)
     font = cv2.FONT_HERSHEY_SIMPLEX
     img_with_text = np.array(img).copy()
 
@@ -204,7 +203,7 @@ def write_text_diffusion(
 ):
     img = Image.open(img_path)
     img_size = np.array(img.size)
-    ncol, nrow = int(img_size[0] / sample_size), int(img_size[1] / sample_size)
+    _ncol, nrow = int(img_size[0] / sample_size), int(img_size[1] / sample_size)
     font = cv2.FONT_HERSHEY_SIMPLEX
     img_with_text = np.array(img).copy()
 

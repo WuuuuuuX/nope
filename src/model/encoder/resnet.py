@@ -213,7 +213,6 @@ def resnet152(use_avg_pooling_and_fc=True, pretrained=False, **kwargs):
 
 
 if __name__ == '__main__':
-    import sys
     # from model_utils import load_checkpoint
     import torch
     print('test model')

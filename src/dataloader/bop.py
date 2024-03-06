@@ -1,14 +1,11 @@
-import os, random
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
 import pandas as pd
 import torch
 import torchvision.transforms as transforms
-import torch.utils.data as data
 import json
 from src.dataloader.baseBOP import BaseBOP
 import logging
-import cv2
 import os.path as osp
 from tqdm import tqdm
 import torchvision
@@ -17,7 +14,6 @@ from src.poses.utils import (
     crop_frame,
     NearestTemplateFinder,
     get_obj_poses_from_template_level,
-    load_index_level0_in_level2,
     inverse_transform,
 )
 import copy
@@ -26,7 +22,7 @@ from pytorch3d.transforms import (
     matrix_to_euler_angles,
     matrix_to_quaternion,
 )
-from src.utils.inout import get_root_project, load_json
+from src.utils.inout import get_root_project
 
 # set level logging
 logging.basicConfig(level=logging.INFO)

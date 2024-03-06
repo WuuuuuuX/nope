@@ -1,7 +1,8 @@
 import blenderproc as bproc
 import numpy as np
 import argparse
-import os, sys
+import os
+import sys
 from PIL import Image
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"

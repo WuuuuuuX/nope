@@ -2,15 +2,12 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from pathlib import Path
-import json
 from PIL import Image
 from torchvision import transforms
 import torchvision
 from einops import rearrange
 import random
-import json
 import os
-import math
 import os.path as osp
 from src.poses.utils import (
     get_obj_poses_from_template_level,
@@ -26,8 +23,8 @@ from pytorch3d.transforms import (
     matrix_to_quaternion,
 )
 import glob
-from src.utils.inout import write_txt, open_txt, save_json, load_json
-from src.utils.shapeNet_utils import train_cats, test_cats, get_shapeNet_mapping
+from src.utils.inout import open_txt
+from src.utils.shapeNet_utils import train_cats, get_shapeNet_mapping
 from pytorch_lightning import seed_everything
 import zipfile
 from io import BytesIO

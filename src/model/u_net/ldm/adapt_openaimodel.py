@@ -1,14 +1,9 @@
-from abc import abstractmethod
 
-import math
 import torch
-import numpy as np
 import torch as th
 import torch.nn as nn
-import torch.nn.functional as F
 
 from src.model.u_net.ldm.openaimodel import UNetModel
-import pytorch_lightning as pl
 
 
 class UNetModelPose(UNetModel):
@@ -159,7 +154,7 @@ class UNetModelPose(UNetModel):
 
 
 if __name__ == "__main__":
-    from omegaconf import DictConfig, OmegaConf
+    from omegaconf import OmegaConf
     from hydra.utils import instantiate
     from src.utils.weight import load_checkpoint
     import logging

@@ -66,7 +66,7 @@ By default, all the datasets and experiments are saved at $ROOT_DIR as defined i
 
 We provide both pre-rendered datasets and scripts to render the datasets from scratch:
 
-#### Option 1: Download pre-rendered datasets from [HuggingFace hub](https://huggingface.co/datasets/nv-nguyen/nope):
+#### Option 1: Download pre-rendered datasets from [our HuggingFace hub](https://huggingface.co/datasets/nv-nguyen/nope):
 ```
 # Download all the datasets:
 python -m src.scripts.download_preprocessed_shapenet

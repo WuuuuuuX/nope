@@ -9,15 +9,9 @@ from src.model.encoder.base_template import (
 from src.model.encoder.resnet import resnet50
 
 import torch.nn.functional as F
-import numpy as np
 import os
-from torchvision import transforms, utils
-import logging
 
 os.environ["MPLCONFIGDIR"] = os.getcwd() + "./tmp/"
-import matplotlib.pyplot as plt
-from PIL import Image
-import wandb
 from src.model.loss import GeodesicError
 
 

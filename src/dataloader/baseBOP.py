@@ -1,11 +1,9 @@
-from torchvision import transforms, utils
-from torch.utils import data
 from pathlib import Path
 from PIL import Image
-import torch
 from torch.utils.data import Dataset
 import numpy as np
-import logging, os
+import logging
+import os
 import os.path as osp
 from tqdm import tqdm
 import time
@@ -18,16 +16,14 @@ from pytorch3d.transforms import (
 )
 
 os.environ["MPLCONFIGDIR"] = os.getcwd() + "./tmp/"
-from src.utils.inout import load_json, save_json, casting_format_to_save_json
+from src.utils.inout import load_json, save_json, casting_format_to_save_json 
 from src.poses.utils import (
     combine_R_and_T,
-    get_obj_poses_from_template_level,
     crop_frame,
 )
 from src.utils.trimesh_utils import load_mesh
 import cv2
 import trimesh
-from src.poses.utils import crop_frame
 
 # set level logging
 logging.basicConfig(level=logging.INFO)
@@ -293,9 +289,11 @@ class BaseBOP(Dataset):
                 mesh = None
             self.cads[cad_id] = {
                 "mesh": mesh,
-                "model_info": models_info[f"{cad_id}"]
-                if f"{cad_id}" in models_info
-                else models_info[cad_id],
+                "model_info": (
+                    models_info[f"{cad_id}"]
+                    if f"{cad_id}" in models_info
+                    else models_info[cad_id]
+                ),
             }
         logging.info(f"Loaded {len(cad_names)} models for dataset done!")
         return self.cads

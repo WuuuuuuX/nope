@@ -1,13 +1,10 @@
 import logging
 import os
-import logging
 import hydra
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader
-import torch.nn as nn
 from src.utils.weight import load_checkpoint
 import pytorch_lightning as pl
-import multiprocessing
 from src.utils.dataloader import concat_dataloader
 from torch.utils.data import ConcatDataset
 
@@ -40,10 +37,10 @@ def train(cfg: DictConfig):
         cfg.machine.trainer.devices = int(os.environ["SLURM_GPUS_ON_NODE"])
         cfg.machine.trainer.num_nodes = int(os.environ["SLURM_NNODES"])
     trainer = instantiate(cfg.machine.trainer)
-    logging.info(f"Trainer initialized")
+    logging.info("Trainer initialized")
 
     model = instantiate(cfg.model)
-    logging.info(f"Model initialized")
+    logging.info("Model initialized")
     if cfg.model.u_net.pretrained_path is not None and cfg.use_pretrained:
         if "ldm" in cfg.model.u_net._target_:
             load_checkpoint(
@@ -147,7 +144,7 @@ def train(cfg: DictConfig):
         if cfg.model.checkpoint_path is not None and cfg.use_pretrained
         else None,
     )
-    logging.info(f"Fitting done")
+    logging.info("Fitting done")
 
 
 if __name__ == "__main__":

@@ -1,7 +1,6 @@
 from pytorch_lightning.trainer.supporters import CombinedLoader
 import logging
 
-import torch
 
 
 def concat_dataloader(list_dataloaders, mode="max_size_cycle", names=None):
