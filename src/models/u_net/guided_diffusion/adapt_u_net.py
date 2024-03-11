@@ -1,9 +1,7 @@
-
-
 import torch as th
 import torch.nn as nn
 
-from src.model.u_net.guided_diffusion.u_net import UNetModel
+from src.models.u_net.guided_diffusion.u_net import UNetModel
 
 
 class UNetModelPose(UNetModel):
@@ -67,7 +65,7 @@ class UNetModelPose(UNetModel):
                 nn.Linear(time_embed_dim, time_embed_dim),
             )
         elif pose_mlp_name == "posEncoding":
-            from src.model.utils import SinusoidalPosEmb
+            from src.models.utils import SinusoidalPosEmb
 
             if time_embed_dim % 6 != 0:
                 logging.warning("u_net_dim must be divisible by 6 (rotation6d)")

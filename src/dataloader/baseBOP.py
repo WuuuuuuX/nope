@@ -16,8 +16,8 @@ from pytorch3d.transforms import (
 )
 
 os.environ["MPLCONFIGDIR"] = os.getcwd() + "./tmp/"
-from src.utils.inout import load_json, save_json, casting_format_to_save_json 
-from src.poses.utils import (
+from src.utils.inout import load_json, save_json, casting_format_to_save_json
+from src.lib3d.utils import (
     combine_R_and_T,
     crop_frame,
 )

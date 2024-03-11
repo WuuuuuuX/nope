@@ -2,7 +2,7 @@ import torch.nn as nn
 import torch
 import pytorch_lightning as pl
 import torch.nn.functional as F
-from src.model.loss import GeodesicError
+from src.models.loss import GeodesicError
 
 
 def conv1x1(in_planes, out_planes, stride=1):
@@ -82,7 +82,6 @@ class BaseFeatureExtractor(pl.LightningModule):
             conv1x1(7, 256), nn.ReLU(), conv1x1(256, descriptor_size)
         )
         self.encoder = nn.Sequential(layer1, nn.ReLU(), layer2, nn.ReLU(), projector)
-
 
     def forward(self, x):
         feat = self.backbone(x)

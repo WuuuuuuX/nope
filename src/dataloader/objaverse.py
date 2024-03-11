@@ -9,7 +9,7 @@ from einops import rearrange
 import random
 import os
 import os.path as osp
-from src.poses.utils import (
+from src.lib3d.utils import (
     crop_frame,
 )
 from tqdm import tqdm

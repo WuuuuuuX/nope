@@ -3,12 +3,7 @@ import numpy as np
 import pathlib
 from src.utils.inout import get_root_project
 from scipy.spatial.transform import Rotation
-import torch
-import cv2
-from torch import nn
-import math
 from scipy.spatial.distance import cdist
-import logging
 
 
 def opencv2opengl(cam_matrix_world):
@@ -75,12 +70,12 @@ def get_obj_poses_from_template_level(
     root_project = get_root_project()
     if return_cam:
         obj_poses_path = os.path.join(
-            root_project, f"src/poses/predefined_poses/sphere_poses_level{level}.npy"
+            root_project, f"src/lib3d/predefined_poses/sphere_poses_level{level}.npy"
         )
         obj_poses = np.load(obj_poses_path)
     else:
         obj_poses_path = os.path.join(
-            root_project, f"src/poses/predefined_poses/obj_poses_level{level}.npy"
+            root_project, f"src/lib3d/predefined_poses/obj_poses_level{level}.npy"
         )
         obj_poses = np.load(obj_poses_path)
 
@@ -92,7 +87,7 @@ def get_obj_poses_from_template_level(
             return obj_poses
     elif pose_distribution == "upper":
         cam_poses_path = os.path.join(
-            root_project, f"src/poses/predefined_poses/sphere_poses_level{level}.npy"
+            root_project, f"src/lib3d/predefined_poses/sphere_poses_level{level}.npy"
         )
         cam_poses = np.load(cam_poses_path)
         if return_index:
@@ -103,11 +98,11 @@ def get_obj_poses_from_template_level(
 
 
 def load_index_level0_in_level2(pose_distribution):
-    # created from https://github.com/nv-nguyen/DiffusionPose/blob/52e2c55b065c9637dcd284cc77a0bfb3356d218a/src/poses/find_neighbors.py
+    # created from https://github.com/nv-nguyen/DiffusionPose/blob/52e2c55b065c9637dcd284cc77a0bfb3356d218a/src/lib3d/find_neighbors.py
     root_repo = get_root_project()
     index_path = os.path.join(
         root_repo,
-        f"src/poses/predefined_poses/idx_{pose_distribution}_level0_in_level2.npy",
+        f"src/lib3d/predefined_poses/idx_{pose_distribution}_level0_in_level2.npy",
     )
     return np.load(index_path)
 
@@ -125,31 +120,6 @@ def load_mapping_id_templates_to_idx_pose_distribution(level, pose_distribution)
     for i in range(len(index_range)):
         mapping[int(index_range[i])] = i
     return mapping
-
-
-def apply_transfrom(transform4x4, matrix4x4):
-    # apply transform to a 4x4 matrix
-    new_matrix4x4 = transform4x4.dot(matrix4x4)
-    return new_matrix4x4
-
-
-def load_rotation_transform(axis, degrees):
-    transform = np.eye(4)
-    transform[:3, :3] = Rotation.from_euler(axis, degrees, degrees=True).as_matrix()
-    return torch.from_numpy(transform).float()
-
-
-def convert_openCV_to_openGL_torch(openCV_poses):
-    openCV_to_openGL_transform = (
-        torch.tensor(
-            [[1, 0, 0], [0, -1, 0], [0, 0, -1]],
-            device=openCV_poses.device,
-            dtype=openCV_poses.dtype,
-        )
-        .unsqueeze(0)
-        .repeat(openCV_poses.shape[0], 1, 1)
-    )
-    return torch.bmm(openCV_to_openGL_transform, openCV_poses[:, :3, :3])
 
 
 def normalize(vec):
@@ -201,92 +171,6 @@ def cartesian_to_spherical(x, y, z):
     return r, theta, phi
 
 
-def crop_frame(
-    img,
-    mask,
-    intrinsic,
-    openCV_pose,
-    image_size,
-    keep_inplane=False,
-    virtual_bbox_size=0.3,
-):
-    origin_obj = np.array([0, 0, 0, 1.0])
-    origin_in_cam = np.dot(openCV_pose, origin_obj)[0:3]  # center pt in camera space
-    if keep_inplane:
-        upper = np.array([0.0, -origin_in_cam[2], origin_in_cam[1]])
-        right = np.array(
-            [
-                origin_in_cam[1] * origin_in_cam[1]
-                + origin_in_cam[2] * origin_in_cam[2],
-                -origin_in_cam[0] * origin_in_cam[1],
-                -origin_in_cam[0] * origin_in_cam[2],
-            ]
-        )
-        if np.linalg.norm(upper) == 0 and np.linalg.norm(right) == 0:
-            logging.warning("upper and right are both zero")
-            upper = np.array([0, -1, 0])
-            right = np.array([1, 0, 0])
-    else:
-        upV = np.array([0, 0, 6]) - origin_in_cam
-        upV = (np.dot(openCV_pose, [upV[0], upV[1], upV[2], 1]))[0:3]
-        right = np.cross(origin_in_cam, upV)
-        upper = np.cross(right, origin_in_cam)
-        if np.linalg.norm(upper) == 0 and np.linalg.norm(right) == 0:
-            upper = np.array([0, -1, 0])
-            right = np.array([1, 0, 0])
-
-    upper = upper * (virtual_bbox_size / 2) / np.linalg.norm(upper)
-    right = right * (virtual_bbox_size / 2) / np.linalg.norm(right)
-
-    # world coord of corner points
-    w1 = origin_in_cam + upper - right
-    w2 = origin_in_cam - upper - right
-    w3 = origin_in_cam + upper + right
-    w4 = origin_in_cam - upper + right
-
-    # coord of corner points on image plane
-    virtual_bbox = np.concatenate(
-        (
-            w1.reshape((1, 3)),
-            w2.reshape((1, 3)),
-            w3.reshape((1, 3)),
-            w4.reshape((1, 3)),
-        ),
-        axis=0,
-    )
-    virtual_bbox2d = perspective(intrinsic, np.eye(4), virtual_bbox)
-    virtual_bbox2d = virtual_bbox2d.astype(np.int32)
-    target_virtual_bbox2d = (
-        np.array([[0, 0], [0, 1], [1, 0], [1, 1]]).astype(np.float32) * image_size
-    )
-    M = cv2.getPerspectiveTransform(
-        virtual_bbox2d.astype(np.float32), target_virtual_bbox2d
-    )
-    cropped_img = cv2.warpPerspective(np.asarray(img), M, (image_size, image_size))
-    if mask is not None:
-        cropped_mask = cv2.warpPerspective(
-            np.asarray(mask), M, (image_size, image_size)
-        )
-        return cropped_img, cropped_mask
-    else:
-        return cropped_img
-
-
-class SinusoidalPosEmb(nn.Module):
-    def __init__(self, dim):
-        super().__init__()
-        self.dim = dim
-
-    def forward(self, x):
-        half_dim = self.dim // 2
-        emb = math.log(10000) / (half_dim - 1)
-        emb = torch.exp(torch.arange(half_dim) * -emb)
-        emb = x[:, :, :, None] * emb[None, None, None, :]  # WxHx3 to WxHxposEnc_size
-        emb = emb.reshape(*x.shape[:2], -1)
-        emb = torch.cat((emb.sin(), emb.cos()), dim=-1)
-        return emb
-
-
 def extract_inplane_from_pose(pose):
     inp = Rotation.from_matrix(pose).as_euler("zyx", degrees=True)[0]
     return inp
@@ -313,6 +197,28 @@ def compute_inplane(rot_query_openCV, rot_template_openCV):
     if err >= 15:
         print("WARINING, error of recovered pose is >=15, err=", err)
     return inp
+
+
+def compute_cropping_from_obj_scale(obj_scale, intrinsic, bbox_size=1.2):
+    up = np.array([0, 0, obj_scale])
+    upper = np.array([0, -bbox_size / 2, 0])
+    right = np.array([bbox_size / 2, 0, 0])
+
+    # coord of corner points on image plane
+    bbox3d = np.array(
+        [
+            [up + upper - right],
+            [up - upper - right],
+            [up + upper + right],
+            [up - upper + right],
+        ]
+    )
+    bbox2d = perspective(intrinsic, np.eye(4), bbox3d)
+    min_pos = np.min(bbox2d, axis=0)
+    max_pos = np.max(bbox2d, axis=0)
+    xyxy_box = np.array([min_pos[0], min_pos[1], max_pos[0], max_pos[1]])
+    print((max_pos-min_pos))
+    return xyxy_box.astype(int)
 
 
 class NearestTemplateFinder(object):

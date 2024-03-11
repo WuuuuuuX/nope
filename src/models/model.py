@@ -1,8 +1,10 @@
 from tqdm import tqdm
 import torch
 import numpy as np
-from os import path
-import os
+from PIL import Image
+import imageio
+import multiprocessing
+import time
 from einops import reduce
 import torch.nn.functional as F
 from functools import partial
@@ -11,17 +13,13 @@ from torchvision import utils
 from src.utils.visualization_utils import (
     put_image_to_grid,
 )
-import logging
-from PIL import Image
-import os.path as osp
-from src.model.utils import unnormalize_to_zero_to_one
-from src.model.loss import GeodesicError
-from src.model.normal_kl_loss import DiagonalGaussianDistribution
-import imageio
-import wandb
-import multiprocessing
-import time
-from src.poses.vsd import vsd_obj
+from src.models.utils import unnormalize_to_zero_to_one
+from src.models.loss import GeodesicError
+from src.models.normal_kl_loss import DiagonalGaussianDistribution
+from src.lib3d.vsd import vsd_obj
+from src.utils.logging import get_logger, log_image, log_video
+
+logger = get_logger(__name__)
 
 
 class PoseConditional(pl.LightningModule):
@@ -36,14 +34,14 @@ class PoseConditional(pl.LightningModule):
         super().__init__()
         self.u_net = u_net
 
-        # define output
-        self.save_dir = save_dir
+        # define logger
+        self.media_dir = save_dir / "media"
+        self.media_dir.mkdir(exist_ok=True, parents=True)
+        self.log_dir = save_dir / "predictions"
+        self.log_dir.mkdir(exist_ok=True, parents=True)
 
         # define optimization scheme
-        self.lr = optim_config.lr
-        self.weight_decay = optim_config.weight_decay
-        self.warm_up_steps = optim_config.warm_up_steps
-        self.use_inv_deltaR = optim_config.use_inv_deltaR
+        self.optim_config = optim_config
         self.optim_name = "AdamW"
 
         # define testing config
@@ -54,39 +52,41 @@ class PoseConditional(pl.LightningModule):
         elif optim_config.loss_type == "l2":
             self.loss = F.mse_loss
         self.metric = GeodesicError()
-        # define wandb logger
-        os.makedirs(save_dir, exist_ok=True)
-        os.makedirs(os.path.join(save_dir, "media"), exist_ok=True)
-        os.makedirs(os.path.join(save_dir, "predictions"), exist_ok=True)
-        self.log_dir = os.path.join(save_dir, "predictions")
+
         # define cad_dir for vsd evaluation
         self.tless_cad_dir = None
 
     def warm_up_lr(self):
         for optim in self.trainer.optimizers:
             for pg in optim.param_groups:
-                pg["lr"] = self.global_step / float(self.warm_up_steps) * self.lr
+                pg["lr"] = (
+                    self.global_step
+                    / float(self.optim_config.warm_up_steps)
+                    * self.optim_config.lr
+                )
             if self.global_step % 50 == 0:
-                logging.info(f"Step={self.global_step}, lr warm up: lr={pg['lr']}")
+                logger.info(f"Step={self.global_step}, lr warm up: lr={pg['lr']}")
 
     def configure_optimizers(self):
+        self.u_net.encoder.requires_grad_(False)
         if self.optim_name == "SGD":
             optimizer = torch.optim.SGD(
                 self.parameters(),
-                self.lr,
-                weight_decay=self.weight_decay,
+                self.optim_config.lr,
+                weight_decay=self.optim_config.weight_decay,
                 momentum=0.9,
             )
         else:
             optimizer = torch.optim.AdamW(
-                self.parameters(),
-                self.lr,
-                weight_decay=self.weight_decay,
+                self.parameters(),  # self.u_net.get_trainable_params(),
+                self.optim_config.lr,
+                weight_decay=self.optim_config.weight_decay,
             )
-        lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer, milestones=[10, 30, 50, 100], gamma=0.5
-        )
-        return [optimizer], [lr_scheduler]
+        return optimizer
+        # lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
+        #     optimizer, milestones=[10, 30, 50, 100], gamma=0.5
+        # )
+        # return [optimizer], [lr_scheduler]
 
     def compute_loss(self, pred, gt):
         if self.loss is not None:
@@ -98,17 +98,17 @@ class PoseConditional(pl.LightningModule):
             loss = pred.kl(other=gt)
             return loss.mean()
 
-    def forward(self, query, reference, relativeR):
+    def forward(self, query, ref, relR):
         query_feat = self.u_net.encoder.encode_image(query)
-        reference_feat = self.u_net.encoder.encode_image(reference, mode="mode")
-        pred_query_feat = self.u_net(reference_feat, relativeR)
+        ref_feat = self.u_net.encoder.encode_image(ref, mode="mode")
+        pred_query_feat = self.u_net(ref_feat, relR)
         loss = self.compute_loss(pred_query_feat, query_feat)
         return loss
 
     @torch.no_grad()
-    def sample(self, reference, relativeR):
-        reference_feat = self.u_net.encoder.encode_image(reference, mode="mode")
-        pred_query_feat = self.u_net(reference_feat, relativeR)
+    def sample(self, ref, relR):
+        reference_feat = self.u_net.encoder.encode_image(ref, mode="mode")
+        pred_query_feat = self.u_net(reference_feat, relR)
         if hasattr(self.u_net.encoder, "decode_latent") and callable(
             self.u_net.encoder.decode_latent
         ):
@@ -120,28 +120,26 @@ class PoseConditional(pl.LightningModule):
 
     def training_step_single_dataloader(self, batch, data_name):
         query = batch["query"]
-        reference = batch["reference"]
-        relativeR = batch["relativeR"]
-        relativeR_inv = batch["relativeR_inv"]
+        ref = batch["ref"]
+        relR = batch["relR"]
+        relR_inv = batch["relR_inv"]
 
-        loss = self.forward(query=query, relativeR=relativeR, reference=reference)
-        if self.use_inv_deltaR:
-            loss_inv = self.forward(
-                query=reference, reference=query, relativeR=relativeR_inv
-            )
+        loss = self.forward(query=query, ref=ref, relR=relR)
+        if self.optim_config.use_inv_deltaR:
+            loss_inv = self.forward(query=ref, ref=query, relR=relR_inv)
             loss = (loss + loss_inv) / 2
         self.log(f"loss/train_{data_name}", loss)
 
         # visualize reconstruction under GT pose
         if self.global_step % 1000 == 0:
-            _, pred_rgb = self.sample(reference=reference, relativeR=relativeR)
+            _, pred_rgb = self.sample(ref=ref, relR=relR)
             if pred_rgb is not None:
-                save_image_path = path.join(
-                    self.save_dir,
-                    f"media/reconst_step{self.global_step}_rank{self.global_rank}.png",
+                save_image_path = (
+                    self.media_dir
+                    / f"reconst_step{self.global_step}_rank{self.global_rank}.png"
                 )
                 vis_imgs = [
-                    unnormalize_to_zero_to_one(reference),
+                    unnormalize_to_zero_to_one(ref),
                     unnormalize_to_zero_to_one(batch["query"]),
                     pred_rgb,
                 ]
@@ -155,23 +153,27 @@ class PoseConditional(pl.LightningModule):
                     save_image_path,
                     nrow=ncol * 4,
                 )
-                self.logger.experiment.log(
-                    {f"reconstruction/train_{data_name}": wandb.Image(save_image_path)},
+                log_image(
+                    logger=self.logger,
+                    name=f"reconstruction/train_{data_name}",
+                    path=str(save_image_path),
                 )
-                print(save_image_path)
         return loss
 
     def training_step(self, batch, idx):
         loss_dict = {}
         loss_sum = 0
         for idx_dataloader, data_name in enumerate(batch.keys()):
-            if self.trainer.global_step < self.warm_up_steps and idx_dataloader == 0:
+            warm_up_steps = self.optim_config.warm_up_steps
+            if self.trainer.global_step < warm_up_steps and idx_dataloader == 0:
                 self.warm_up_lr()
-            elif self.trainer.global_step == self.warm_up_steps and idx_dataloader == 0:
-                logging.info(f"Finished warm up, setting lr to {self.lr}")
+            elif self.trainer.global_step == warm_up_steps and idx_dataloader == 0:
+                logger.info(f"Finished warm up, setting lr to {self.optim_config.lr}")
+
             loss = self.training_step_single_dataloader(batch[data_name], data_name)
             loss_dict[data_name] = loss
             loss_sum += loss
+
         loss_avg = loss_sum / len(batch.keys())
         self.log("loss/train_avg", loss_avg)
         return loss_avg
@@ -183,45 +185,40 @@ class PoseConditional(pl.LightningModule):
                 f"{key}/{split_name}",
                 value,
                 sync_dist=True,
+                on_step=True,
+                on_epoch=True,
             )
 
-    def generate_templates(
-        self, reference, all_relativeR, gt_templates, visualize=False
-    ):
-        b, c, h, w = reference.shape
-        num_templates = all_relativeR.shape[1]
+    def generate_templates(self, ref, relRs, gt_templates, visualize=False):
+        b, c, h, w = ref.shape
+        num_templates = relRs.shape[1]
         # keep all predicted features of template for retrieval later
         if hasattr(self.u_net.encoder, "decode_latent") and callable(
             self.u_net.encoder.decode_latent
         ):
-            pred_templates = torch.zeros(
-                (b, num_templates, c, h, w), device=reference.device
-            )
+            pred = torch.zeros((b, num_templates, c, h, w), device=ref.device)
         else:
-            pred_templates = None
-        pred_feat_templates = torch.zeros(
+            pred = None
+        pred_feat = torch.zeros(
             (b, num_templates, self.u_net.encoder.latent_dim, int(h / 8), int(w / 8)),
-            device=reference.device,
+            device=ref.device,
         )
         frames = []
-        for idx_template in tqdm(range(0, num_templates)):
+        for idx in tqdm(range(0, num_templates)):
             # get output of sample
             if visualize:
                 vis_imgs = [
-                    unnormalize_to_zero_to_one(reference),
-                    unnormalize_to_zero_to_one(gt_templates[:, idx_template]),
+                    unnormalize_to_zero_to_one(ref),
+                    unnormalize_to_zero_to_one(gt_templates[:, idx]),
                 ]
-            pred_feat_i, pred_rgb_i = self.sample(
-                reference=reference, relativeR=all_relativeR[:, idx_template, :]
-            )
-            pred_feat_templates[:, idx_template] = pred_feat_i
+            pred_feat_i, pred_rgb_i = self.sample(ref=ref, relR=relRs[:, idx, :])
+            pred_feat[:, idx] = pred_feat_i
             if pred_rgb_i is not None:
-                pred_templates[:, idx_template] = pred_rgb_i
+                pred[:, idx] = pred_rgb_i
                 if visualize:
                     vis_imgs.append(pred_rgb_i.to(torch.float16))
-                    save_image_path = path.join(
-                        self.save_dir,
-                        f"media/template{idx_template}_rank{self.global_rank}.png",
+                    save_image_path = (
+                        self.media_dir / f"template{idx}_rank{self.global_rank}.png"
                     )
                     vis_imgs, ncol = put_image_to_grid(vis_imgs)
                     vis_imgs_resized = vis_imgs.clone()
@@ -237,14 +234,14 @@ class PoseConditional(pl.LightningModule):
                     frames.append(frame)
         if visualize:
             # write video of denoising process with imageio ffmpeg
-            vid_path = path.join(
-                self.save_dir,
-                f"media/video_step{self.global_step}_rank{self.global_rank}.mp4",
+            vid_path = (
+                self.media_dir
+                / f"video_step{self.global_step}_rank{self.global_rank}.mp4"
             )
             imageio.mimwrite(vid_path, frames, fps=5, macro_block_size=8)
         else:
             vid_path = None
-        return pred_feat_templates, pred_templates, vid_path
+        return pred_feat, pred, vid_path
 
     def retrieval(self, query, template_feat):
         num_templates = template_feat.shape[1]
@@ -266,26 +263,25 @@ class PoseConditional(pl.LightningModule):
             and callable(self.u_net.encoder.decode_latent)
         ):
             visualize = False
-            logging.info("Setting visualize=False!")
-        print("eval_geodesic", visualize)
+            logger.info("Setting visualize=False!")
         # visualize same loss as training
         query = batch["query"]
+        ref = batch["ref"]
+        relR = batch["relR"]
         batch_size = query.shape[0]
-        reference = batch["reference"]
-        relativeR = batch["gt_relativeR"]
-        loss = self.forward(query=query, relativeR=relativeR, reference=reference)
+        loss = self.forward(query=query, ref=ref, relR=relR)
         self.log(f"loss/val_{data_name}", loss)
 
         if visualize:
             # visualize reconstruction under GT pose
-            save_image_path = path.join(
-                self.save_dir,
-                f"media/reconst_step{self.global_step}_rank{self.global_rank}.png",
+            save_image_path = (
+                self.media_dir
+                / f"reconst_step{self.global_step}_rank{self.global_rank}.png"
             )
-            _, pred_rgb = self.sample(reference=reference, relativeR=relativeR)
+            _, pred_rgb = self.sample(ref=ref, relR=relR)
             if pred_rgb is not None:
                 vis_imgs = [
-                    unnormalize_to_zero_to_one(reference),
+                    unnormalize_to_zero_to_one(ref),
                     unnormalize_to_zero_to_one(batch["query"]),
                     pred_rgb,
                 ]
@@ -299,35 +295,39 @@ class PoseConditional(pl.LightningModule):
                     save_image_path,
                     nrow=ncol * 4,
                 )
-                self.logger.experiment.log(
-                    {f"reconstruction/val_{data_name}": wandb.Image(save_image_path)},
+                log_image(
+                    logger=self.logger,
+                    name=f"reconstruction/val_{data_name}",
+                    path=str(save_image_path),
                 )
         # retrieval templates
-        gt_templates = batch["gt_templates"]
-        all_relativeR = batch["all_relativeR"]
+        template_imgs = batch["template_imgs"]
+        template_relRs = batch["template_relRs"]
         pred_feat, pred_rgb, vid_path = self.generate_templates(
-            reference=reference,
-            all_relativeR=all_relativeR,
-            gt_templates=gt_templates,
+            ref=ref,
+            relRs=template_relRs,
+            gt_templates=template_imgs,
             visualize=visualize,
         )
         if visualize and pred_rgb is not None:
-            self.logger.experiment.log(
-                {f"templates/val_{data_name}": wandb.Video(vid_path)},
+            log_video(
+                logger=self.logger,
+                name=f"templates/val_{data_name}",
+                path=str(vid_path),
             )
         similarity, nearest_idx = self.retrieval(query=query, template_feat=pred_feat)
 
         if visualize:
             # visualize prediction
-            save_image_path = path.join(
-                self.save_dir,
-                f"media/retrieved_step{self.global_step}_rank{self.global_rank}.png",
+            save_image_path = (
+                self.media_dir
+                / f"retrieved_step{self.global_step}_rank{self.global_rank}.png"
             )
-            retrieved_template = gt_templates[
+            retrieved_template = template_imgs[
                 torch.arange(0, batch_size, device=query.device), nearest_idx[:, 0]
             ]
             vis_imgs = [
-                unnormalize_to_zero_to_one(reference),
+                unnormalize_to_zero_to_one(ref),
                 unnormalize_to_zero_to_one(batch["query"]),
                 unnormalize_to_zero_to_one(retrieved_template),
             ]
@@ -341,26 +341,26 @@ class PoseConditional(pl.LightningModule):
                 save_image_path,
                 nrow=ncol * 4,
             )
-            self.logger.experiment.log(
-                {f"retrieval/val_{data_name}": wandb.Image(save_image_path)},
+            log_image(
+                logger=self.logger,
+                name=f"retrieval/val_{data_name}",
+                path=str(save_image_path),
             )
-        template_poses = batch["template_poses"][0]
+        template_poses = batch["template_Rs"][0]
         error, acc = self.metric(
             predR=template_poses[nearest_idx],
-            gtR=batch["query_pose"],
+            gtR=batch["queryR"],
             symmetry=batch["symmetry"].reshape(-1),
         )
         self.log_score(acc, split_name=f"val_{data_name}")
 
         # save predictions
         if save_prediction:
-            save_path = os.path.join(
-                self.save_dir,
-                "predictions",
-                f"pred_step{self.global_step}_rank{self.global_rank}",
+            save_path = (
+                self.log_dir / f"pred_step{self.global_step}_rank{self.global_rank}"
             )
             vis_imgs = vis_imgs.cpu().numpy()
-            query_pose = batch["query_pose"].cpu().numpy()
+            query_pose = batch["queryR"].cpu().numpy()
             similarity = similarity.cpu().numpy()
             np.savez(
                 save_path,
@@ -374,14 +374,14 @@ class PoseConditional(pl.LightningModule):
         import trimesh
         import pyrender
 
-        logging.info("Loading cad to avoid haning in validation lightning (BUG to fix)")
+        logger.info("Loading cad to avoid haning in validation lightning (BUG to fix)")
         self.tless_cad = {}
         for obj_id in range(1, 31):
-            cad_path = osp.join(cad_dir, f"obj_{obj_id:06d}.ply")
+            cad_path = cad_dir / f"obj_{obj_id:06d}.ply"
             mesh = trimesh.load_mesh(cad_path)
             mesh = pyrender.Mesh.from_trimesh(mesh)
             self.tless_cad[obj_id] = mesh
-        logging.info("Loading mesh done!")
+        logger.info("Loading mesh done!")
 
     def eval_vsd(self, batch, data_name, save_path):
         # visualize same loss as training
@@ -393,9 +393,9 @@ class PoseConditional(pl.LightningModule):
         self.log(f"loss/val_{data_name}", loss)
 
         # visualize reconstruction under GT pose
-        save_image_path = path.join(
-            self.save_dir,
-            f"media/reconst_val_step{self.global_step}_rank{self.global_rank}.png",
+        save_image_path = (
+            self.media_dir
+            / f"reconst_val_step{self.global_step}_rank{self.global_rank}.png"
         )
         _, pred_rgb = self.sample(reference=reference, relativeR=relativeR)
         vis_imgs = [
@@ -413,8 +413,10 @@ class PoseConditional(pl.LightningModule):
             save_image_path,
             nrow=ncol * 4,
         )
-        self.logger.experiment.log(
-            {f"reconstruction/val_{data_name}": wandb.Image(save_image_path)},
+        log_image(
+            logger=self.logger,
+            name=f"reconstruction/val_{data_name}",
+            path=save_image_path,
         )
         # retrieval templates
         visualize = True if "gt_templates" in batch else False
@@ -430,9 +432,9 @@ class PoseConditional(pl.LightningModule):
 
         # visualize prediction
         if visualize:
-            save_image_path = path.join(
-                self.save_dir,
-                f"media/retrieved_val_step{self.global_step}_rank{self.global_rank}.png",
+            save_image_path = (
+                self.media_dir
+                / f"retrieved_val_step{self.global_step}_rank{self.global_rank}.png"
             )
             retrieved_template = gt_templates[
                 torch.arange(0, batch_size, device=query.device), nearest_idx[:, 0]
@@ -452,11 +454,15 @@ class PoseConditional(pl.LightningModule):
                 save_image_path,
                 nrow=ncol * 4,
             )
-            self.logger.experiment.log(
-                {f"retrieval/val_{data_name}": wandb.Image(save_image_path)},
+            log_image(
+                logger=self.logger,
+                name=f"retrieval/val_{data_name}",
+                path=str(save_image_path),
             )
-            self.logger.experiment.log(
-                {f"templates/val_{data_name}": wandb.Video(vid_path)},
+            log_video(
+                logger=self.logger,
+                name=f"templates/val_{data_name}",
+                path=str(vid_path),
             )
         # getting VSD scores
         evaluate_vsd = True
@@ -546,12 +552,13 @@ class PoseConditional(pl.LightningModule):
         for idx_dataloader, dataloader_name in enumerate(batch.keys()):
             data_name, category = dataloader_name.split("_")
             if data_name in ["tless"]:
-                save_path = os.path.join(
-                        self.log_dir, f"vsd_{category}_batch{idx_batch}_rank_{self.global_rank}.npy"
-                    )
+                save_path = (
+                    self.log_dir
+                    / f"vsd_{category}_batch{idx_batch}_rank_{self.global_rank}.npy"
+                )
                 self.eval_vsd(batch[dataloader_name], category, save_path=save_path)
             else:
-                
+
                 self.eval_geodesic(
                     batch[dataloader_name],
                     category,

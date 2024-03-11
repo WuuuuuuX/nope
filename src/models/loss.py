@@ -1,8 +1,8 @@
 from torch import nn
 import torch
-from pytorch3d.transforms import so3_relative_angle
-from src.poses.utils import load_rotation_transform, convert_openCV_to_openGL_torch
+from src.lib3d.torch import load_rotation_transform, convert_openCV_to_openGL_torch
 import torch.nn.functional as F
+from src.lib3d.so3 import so3_relative_angle
 
 # so3_relative_angle is a function from pytorch3d library but it does not support symmetry objects
 # this function is a modified version of so3_relative_angle to support symmetry objects
@@ -12,6 +12,7 @@ roty180 = load_rotation_transform("y", 180)[:3, :3].float()
 
 
 def so3_relative_angle_with_symmetry(pred, gt, symmetry):
+
     # This function do not handle inplane rotation
     # handle symmetry by seperating the objects into 3 groups: no symmetry, two symmetry, circle symmetry
 
@@ -116,7 +117,7 @@ class GeodesicError(nn.Module):
 
 
 if __name__ == "__main__":
-    from src.poses.utils import get_obj_poses_from_template_level
+    from src.lib3d.numpy import get_obj_poses_from_template_level
 
     template_poses = get_obj_poses_from_template_level(
         level=0, pose_distribution="upper"
@@ -130,7 +131,7 @@ if __name__ == "__main__":
         distance = torch.norm(distance, dim=2)
         similarity = -distance.sum(axis=3).sum(axis=2)  # B x N
         inv_distance, pred_index = similarity.topk(k=5, dim=1)  # B x 1
-        
+
         pred_poses = template_poses[pred_index]
         gt_poses = template_poses[range(len(pred_poses))]
         for symmetry in [0]:

@@ -2,7 +2,7 @@ import math
 import torch
 import torch.nn as nn
 import numpy as np
-from src.model.u_net.ldm.attention import LinearAttention
+from src.models.u_net.ldm.attention import LinearAttention
 
 
 def get_timestep_embedding(timesteps, embedding_dim):
@@ -931,7 +931,7 @@ if __name__ == "__main__":
     from omegaconf import OmegaConf
     from hydra.utils import instantiate
     import torch
-    from src.model.u_net.guided_diffusion import dist_util
+    from src.models.u_net.guided_diffusion import dist_util
 
     cfg = OmegaConf.load("configs/model/guided_df_cf_256.yaml")
     model_path = "/home/nguyen/Documents/pretrained/openai/256x256_diffusion.pt"

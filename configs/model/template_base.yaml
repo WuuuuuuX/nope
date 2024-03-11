@@ -1,11 +1,11 @@
-_target_: src.model.model.PoseConditional
+_target_: src.models.model.PoseConditional
 u_net:
-  _target_: src.model.u_net.denoising_diffusion_pytorch.u_net.UNet
+  _target_: src.models.u_net.denoising_diffusion_pytorch.u_net.UNet
   u_net_dim: 192
   rot_representation_dim: 6
   pose_mlp_name: "single_layer"
   encoder:
-    _target_: src.model.encoder.template.FeatureExtractor
+    _target_: src.models.encoder.template.FeatureExtractor
     pretrained_path: ${machine.root_dir}/pretrained/resnet50_template_pose.pth
     descriptor_size: 8
     threshold: 0.2

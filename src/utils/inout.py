@@ -3,11 +3,8 @@ import errno
 import shutil
 import numpy as np
 import json
-
-try:
-    import ruamel_yaml as yaml
-except ModuleNotFoundError:
-    import ruamel.yaml as yaml
+import pandas as pd
+import ruamel.yaml as yaml
 
 
 def create_folder(path):
@@ -68,6 +65,25 @@ def casting_format_to_save_json(data):
         ):
             data[key] = np.array(data[key]).tolist()
     return data
+
+
+def convert_dict_to_dataframe(data_dict, column_names, convert_to_list=True):
+    if convert_to_list:
+        data_list = list(data_dict.items())
+    else:
+        data_list = data_dict
+    df = pd.DataFrame(data_list, columns=column_names)
+    return df
+
+
+def convert_list_to_dataframe(data_list):
+    column_names = [k for k in data_list[0].keys()]
+    data = [[] for _ in range(len(data_list))]
+    for idx, item in enumerate(data_list):
+        for key in item.keys():
+            data[idx].append(item[key])
+    df = pd.DataFrame(data, columns=column_names)
+    return df
 
 
 if __name__ == "__main__":

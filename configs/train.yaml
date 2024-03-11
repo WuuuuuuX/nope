@@ -1,5 +1,5 @@
 defaults:
-  - user: default
+  - user: nguyen
   - callback: base
   - model: vae_base
   - machine: local

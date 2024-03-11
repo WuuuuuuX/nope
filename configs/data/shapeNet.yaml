@@ -1,9 +1,7 @@
-_target_: src.dataloader.shapeNet.ShapeNet
+_target_: src.dataloader.shapenet.ShapeNet
 
 # default, do not change
-root_dir: ${machine.root_dir}/datasets/nope/shapeNet
+root_dir: ${machine.root_dir}/datasets/shapenet
 split: 
-rot_representation: rotation6d
-pose_distribution: upper
 fast_evaluation: true
 img_size: 256

@@ -3,7 +3,7 @@ import torch
 import logging
 from functools import partial
 import pytorch_lightning as pl
-from src.model.u_net.denoising_diffusion_pytorch.model_utils import (
+from src.models.u_net.denoising_diffusion_pytorch.model_utils import (
     default,
     Attention,
     LinearAttention,
@@ -15,6 +15,9 @@ from src.model.u_net.denoising_diffusion_pytorch.model_utils import (
     HardDownsample,
     ResnetBlock,
 )
+from src.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class UNet(pl.LightningModule):
@@ -32,7 +35,7 @@ class UNet(pl.LightningModule):
         **kwargs,
     ):
         super().__init__()
-        logging.info("Initializing U-Net")
+        logger.info("Initializing U-Net")
 
         # load pretrained backbone
         self.encoder = encoder
@@ -65,8 +68,11 @@ class UNet(pl.LightningModule):
                 nn.Linear(classes_dim, classes_dim),
             )
         elif pose_mlp_name == "posEncoding":
-            from src.model.utils import SinusoidalPosEmb
-            assert classes_dim % 6 == 0, "classes_dim must be divisible by 6 (rotation6d)"
+            from src.models.utils import SinusoidalPosEmb
+
+            assert (
+                classes_dim % 6 == 0
+            ), "classes_dim must be divisible by 6 (rotation6d)"
             self.pose_mlp = SinusoidalPosEmb(dim=int(classes_dim // 6))
         self.init_conv = nn.Conv2d(self.channels, init_dim, 3, padding=1)
         block_klass = partial(
@@ -95,9 +101,11 @@ class UNet(pl.LightningModule):
                             time_emb_dim=classes_dim,
                         ),
                         Residual(PreNorm(dim_in, LinearAttention(dim_in))),
-                        downsample_klass(dim_in, dim_out)
-                        if not is_last
-                        else nn.Conv2d(dim_in, dim_out, 3, padding=1),
+                        (
+                            downsample_klass(dim_in, dim_out)
+                            if not is_last
+                            else nn.Conv2d(dim_in, dim_out, 3, padding=1)
+                        ),
                     ]
                 )
             )
@@ -132,9 +140,11 @@ class UNet(pl.LightningModule):
                             time_emb_dim=classes_dim,
                         ),
                         Residual(PreNorm(dim_out, LinearAttention(dim_out))),
-                        upsample_klass(dim_out, dim_in)
-                        if not is_last
-                        else nn.Conv2d(dim_out, dim_in, 3, padding=1),
+                        (
+                            upsample_klass(dim_out, dim_in)
+                            if not is_last
+                            else nn.Conv2d(dim_out, dim_in, 3, padding=1)
+                        ),
                     ]
                 )
             )
@@ -149,7 +159,7 @@ class UNet(pl.LightningModule):
             block_klass(u_net_dim, u_net_dim),
             nn.Conv2d(u_net_dim, self.channels, 1),
         )
-        logging.info("Intializing UNet done!")
+        logger.info("Intializing UNet done!")
 
     def forward(self, x, pose):
         x = self.init_conv(x)
@@ -193,8 +203,7 @@ class UNet(pl.LightningModule):
 
 
 if __name__ == "__main__":
-    from rich import print
-    from src.model.encoder.AutoencoderKL import VAE_StableDiffusion
+    from src.models.encoder.AutoencoderKL import VAE_StableDiffusion
 
     vae = VAE_StableDiffusion(
         "/home/nguyen/Documents/pretrained/stable-diffusion-v1-5_vae.pth"

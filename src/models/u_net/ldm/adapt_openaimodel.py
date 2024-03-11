@@ -1,9 +1,8 @@
-
 import torch
 import torch as th
 import torch.nn as nn
 
-from src.model.u_net.ldm.openaimodel import UNetModel
+from src.models.u_net.ldm.openaimodel import UNetModel
 
 
 class UNetModelPose(UNetModel):
@@ -107,13 +106,18 @@ class UNetModelPose(UNetModel):
                 nn.Linear(context_dim, context_dim),
             )
         elif pose_mlp_name == "posEncoding":
-            from src.model.utils import SinusoidalPosEmb
+            from src.models.utils import SinusoidalPosEmb
+
             if context_dim % 6 == 0:
-                logging.warning(f"context_dim={context_dim} must be divisible by 6 (rotation6d)")
-            self.pose_mlp = SinusoidalPosEmb(dim=int(context_dim // 6)+1, max_dim=context_dim)
+                logging.warning(
+                    f"context_dim={context_dim} must be divisible by 6 (rotation6d)"
+                )
+            self.pose_mlp = SinusoidalPosEmb(
+                dim=int(context_dim // 6) + 1, max_dim=context_dim
+            )
 
         self.injecting_condition_twice = injecting_condition_twice
-        if self.injecting_condition_twice: # map pose as time embedding
+        if self.injecting_condition_twice:  # map pose as time embedding
             self.pose_mlp_timesteps = nn.Sequential(
                 nn.Linear(rot_representation_dim, self.time_embed_dim),
             )

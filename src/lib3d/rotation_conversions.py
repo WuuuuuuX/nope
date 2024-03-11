@@ -28,6 +28,17 @@ e.g.
 """
 
 
+def convert_rotation_representation(rot, rot_representation):
+    if rot_representation == "rotation6d":
+        return matrix_to_rotation_6d(rot)
+    elif rot_representation == "euler_angles":
+        return matrix_to_euler_angles(rot)
+    elif rot_representation == "quaternion":
+        return matrix_to_quaternion(rot)
+    else:
+        print("Not implemented!")
+
+
 def quaternion_to_matrix(quaternions):
     """
     Convert rotations given as quaternions to rotation matrices.

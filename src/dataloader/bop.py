@@ -10,7 +10,7 @@ import os.path as osp
 from tqdm import tqdm
 import torchvision
 from einops import rearrange
-from src.poses.utils import (
+from src.lib3d.utils import (
     crop_frame,
     NearestTemplateFinder,
     get_obj_poses_from_template_level,

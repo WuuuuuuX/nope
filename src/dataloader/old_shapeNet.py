@@ -9,7 +9,7 @@ from einops import rearrange
 import random
 import os
 import os.path as osp
-from src.poses.utils import (
+from src.lib3d.utils import (
     get_obj_poses_from_template_level,
     load_index_level0_in_level2,
     crop_frame,

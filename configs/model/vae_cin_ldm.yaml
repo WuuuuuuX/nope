@@ -1,6 +1,6 @@
-_target_: src.model.base.PoseConditional
+_target_: src.models.model.PoseConditional
 u_net:
-  _target_: src.model.u_net.ldm.adapt_openaimodel.UNetModelPose
+  _target_: src.models.u_net.ldm.adapt_openaimodel.UNetModelPose
   image_size: 32
   in_channels: 4
   out_channels: 4
@@ -28,7 +28,7 @@ u_net:
   rot_representation_dim: 6
   pose_mlp_name: "single_layer"
   encoder:
-    _target_: src.model.encoder.AutoencoderKL.VAE_StableDiffusion
+    _target_: src.models.encoder.AutoencoderKL.VAE_StableDiffusion
     pretrained_path: ${machine.root_dir}/pretrained/stable-diffusion-v1-5_vae.pth
     latent_dim: 4
     name: VAE

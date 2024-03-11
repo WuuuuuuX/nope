@@ -1,18 +1,18 @@
 import torch.nn as nn
 import torch
-from src.model.encoder.base_template import (
+from src.models.encoder.base_template import (
     BaseFeatureExtractor,
     conv1x1,
     InfoNCE,
     OcclusionAwareSimilarity,
 )
-from src.model.encoder.resnet import resnet50
+from src.models.encoder.resnet import resnet50
 
 import torch.nn.functional as F
 import os
 
 os.environ["MPLCONFIGDIR"] = os.getcwd() + "./tmp/"
-from src.model.loss import GeodesicError
+from src.models.loss import GeodesicError
 
 
 class FeatureExtractor(BaseFeatureExtractor):

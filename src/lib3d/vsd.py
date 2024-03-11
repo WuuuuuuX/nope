@@ -3,7 +3,7 @@ from functools import partial
 import trimesh
 import pyrender
 from src.utils.inout import load_json
-from src.poses.vsd_utils import (
+from src.lib3d.vsd_utils import (
     depth_im_to_dist_im_fast,
     estimate_visib_mask_gt,
     estimate_visib_mask_est,

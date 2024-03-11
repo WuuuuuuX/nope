@@ -14,7 +14,7 @@ from src.utils.shapeNet_utils import (
 )
 from src.utils.logging import get_logger
 from src.utils.trimesh_utils import get_obj_diameter
-from src.poses.utils import look_at, spherical_to_cartesian, inverse_transform
+from src.lib3d.utils import look_at, spherical_to_cartesian, inverse_transform
 
 logger = get_logger(__name__)
 
