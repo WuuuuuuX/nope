@@ -40,7 +40,7 @@ def call_blender(
     )
     obj_dir = root_dir / "templates" / f"{metaData['index']:06d}"
 
-    command = f"blenderproc run src/poses/blenderproc.py {cad_path} {obj_dir} {gpu_id}"
+    command = f"blenderproc run src/lib3d/blenderproc.py {cad_path} {obj_dir} {gpu_id}"
     if tless_like:
         command += " tless_like"
     else:

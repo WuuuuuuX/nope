@@ -53,13 +53,16 @@ def AABB_to_OBB(AABB):
     return corners
 
 
-def load_mesh(path, ORIGIN_GEOMETRY="BOUNDS"):
+def load_mesh(path, ORIGIN_GEOMETRY="BOUNDS", return_origin_bounds=False):
     mesh = as_mesh(trimesh.load(path))
     if ORIGIN_GEOMETRY == "BOUNDS":
         AABB = mesh.bounds
         center = np.mean(AABB, axis=0)
         mesh.vertices -= center
-    return mesh
+    if return_origin_bounds:
+        return mesh, center
+    else:
+        return mesh
 
 
 def get_bbox_from_mesh(mesh):
@@ -68,10 +71,10 @@ def get_bbox_from_mesh(mesh):
     return OBB
 
 
-def get_obj_diameter(mesh_path):
-    mesh = load_mesh(mesh_path)
-    extents = mesh.extents*2
-    return np.linalg.norm(extents)
+def get_obj_origin_and_diameter(mesh_path):
+    mesh, center = load_mesh(mesh_path, return_origin_bounds=True)
+    extents = mesh.extents * 2
+    return np.linalg.norm(extents), center
 
 
 if __name__ == "__main__":

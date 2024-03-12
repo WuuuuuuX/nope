@@ -1,8 +1,7 @@
 import blenderproc as bproc
 import numpy as np
 import argparse
-import os
-import sys
+import os, sys
 from PIL import Image
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
@@ -48,8 +47,13 @@ def render_blender_proc(
         shapeNet_path,
         used_synset_id=cad_id,
         used_source_id=model_id,
-        move_object_origin=True,
+        move_object_origin=False,
     )
+    # re-center object so that the center of 3D bounding box (0, 0, 0)
+    bounding_box = obj.get_bound_box()
+    center_box = np.mean(bounding_box, axis=0)
+    obj.set_location(-center_box)
+
     if tless_like:
         # Check if the object has materials assigned
         obj.clear_materials()
@@ -57,7 +61,7 @@ def render_blender_proc(
         mat = obj.get_materials()[0]
         grey_col = np.random.uniform(0.2, 0.4)
         mat.set_principled_shader_value("Base Color", [grey_col, grey_col, grey_col, 1])
-        
+
     # obj.set_origin(mode="CENTER_OF_VOLUME")  # CENTER_OF_MASS
     import bpy
 
@@ -74,41 +78,39 @@ def render_blender_proc(
     # set the amount of samples, which should be used for the color rendering
     bproc.renderer.set_max_amount_of_samples(100)
     bproc.renderer.set_output_format(enable_transparency=True)
-    for name_pose in obj_poses:
-        data_pose = obj_poses[name_pose]
-        for idx_frame, pose in enumerate(data_pose):
+    if "query" in obj_poses:
+        for name_pose in ["query", "ref"]:
+            for idx_frame, pose in enumerate(obj_poses[name_pose]):
+                obj.set_local2world_mat(pose)
+                data = bproc.renderer.render()
+                rgb = Image.fromarray(np.uint8(data["colors"][0])).convert("RGBA")
+                rgb.save(os.path.join(output_dir, f"{idx_frame:06d}_{name_pose}.png"))
+    else:
+        template_poses = obj_poses["template_poses"]
+        for idx_frame, pose in enumerate(template_poses):
             obj.set_local2world_mat(pose)
             data = bproc.renderer.render()
             rgb = Image.fromarray(np.uint8(data["colors"][0])).convert("RGBA")
-            name = f"{name_pose}_{idx_frame:06d}"
-            rgb.save(os.path.join(output_dir, f"{name}.png"))
+            rgb.save(os.path.join(output_dir, f"{idx_frame:06d}.png"))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("cad_path", nargs="?", help="Path to the model file")
-    parser.add_argument("query_pose_path", nargs="?", help="Query pose")
-    parser.add_argument("reference_pose_path", nargs="?", help="Reference pose")
-    parser.add_argument("templates_poses_path", nargs="?", help="Template poses")
-    parser.add_argument("save_path", nargs="?", help="Path to save images")
+    parser.add_argument("obj_dir", nargs="?", help="Path to pose")
     parser.add_argument("gpu_id", nargs="?", help="GPUs id")
     parser.add_argument("texture", nargs="?", help="tless_like or not")
     parser.add_argument("disable_output", nargs="?", help="Disable output of blender")
     args = parser.parse_args()
+
     tless_like = True if args.texture == "tless_like" else False
-    os.makedirs(args.save_path, exist_ok=True)
-    poses = {
-        "query": np.load(args.query_pose_path),
-        "reference": np.load(args.reference_pose_path),
-        "templates": np.load(args.templates_poses_path),
-    }
+    poses = np.load(os.path.join(args.obj_dir, "poses.npz"))
     intrinsic = np.array([[525, 0.0, 256], [0.0, 525, 256], [0.0, 0.0, 1.0]])
 
     img_size = [512, 512]
-    os.makedirs(args.save_path, exist_ok=True)
     if args.disable_output == "true":
         # redirect output to log file
-        logfile = args.save_path + "/render.log"
+        logfile = os.path.join(args.obj_dir, "render.log")
         open(logfile, "a").close()
         old = os.dup(1)
         sys.stdout.flush()
@@ -117,7 +119,7 @@ if __name__ == "__main__":
     # scale_meter do not change the binary mask but recenter_origin change it
     render_blender_proc(
         args.cad_path,
-        args.save_path,
+        args.obj_dir,
         poses,
         intrinsic=intrinsic,
         img_size=img_size,

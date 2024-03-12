@@ -217,7 +217,6 @@ def compute_cropping_from_obj_scale(obj_scale, intrinsic, bbox_size=1.2):
     min_pos = np.min(bbox2d, axis=0)
     max_pos = np.max(bbox2d, axis=0)
     xyxy_box = np.array([min_pos[0], min_pos[1], max_pos[0], max_pos[1]])
-    print((max_pos-min_pos))
     return xyxy_box.astype(int)
 
 

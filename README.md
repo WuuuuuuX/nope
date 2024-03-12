@@ -84,7 +84,7 @@ python -m src.scripts.download_shapenet
 python -m src.scripts.generate_poses_shapenet
 
 # Render images and templates:
-python -m src.scripts.render_images.shapenet
+python -m src.scripts.render_images_shapenet
 python -m src.scripts.render_template_seen_shapenet
 python -m src.scripts.render_template_unseen_shapenet
 ```
@@ -115,7 +115,7 @@ python test_shapeNet.py
 <details><summary>Click to expand</summary>
 
 ```
-python train.py name_exp=train
+python train_shapeNet.py
 ```
 
 </details>

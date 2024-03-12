@@ -28,7 +28,7 @@ def call_blender(
     gpu_id,
     custom_blender_path,
 ):
-    metaData = metaDatas[idx+start_index]
+    metaData = metaDatas[idx + start_index]
     cad_path = (
         root_dir
         / "models"
@@ -36,9 +36,9 @@ def call_blender(
         / metaData["obj_id"]
         / "models/model_normalized.obj"
     )
-    obj_dir = root_dir / "test" / f"{idx+start_index:06d}"
+    obj_dir = root_dir / "images" / f"{idx+start_index:06d}"
 
-    command = f"blenderproc run src/poses/blenderproc.py {cad_path} {obj_dir} {gpu_id}"
+    command = f"blenderproc run src/lib3d/blenderproc.py {cad_path} {obj_dir} {gpu_id}"
     if tless_like:
         command += " tless_like"
     else:
@@ -78,7 +78,7 @@ def render(cfg: DictConfig) -> None:
         gpu_id=cfg.gpu_ids,
         custom_blender_path=cfg.custom_blender_path,
     )
-    metaData_shapeNet = metaData_shapeNet[cfg.start_index:cfg.end_index]
+    metaData_shapeNet = metaData_shapeNet[cfg.start_index : cfg.end_index]
     # generate images
     start_time = time.time()
     mapped_values = list(

@@ -5,7 +5,11 @@ from PIL import Image
 from src.lib3d.numpy import get_root_project
 
 intrinsic = np.array([[525, 0.0, 256], [0.0, 525, 256], [0.0, 0.0, 1.0]])
-bounding_box = np.array([128, 128, 384, 384])  # zoom-in twice given image size 512x512
+black_rgb = Image.new(
+    "RGB",
+    (512, 512),
+    (0, 0, 0),
+)
 train_categories = [
     "airplane",
     "bench",
@@ -49,9 +53,10 @@ def get_shapeNet_mapping():
 
 
 def open_image(path):
-    img = Image.open(path).convert("RGB")
-    img = img.crop(bounding_box)
-    return img
+    img = Image.open(path)
+    rgb = black_rgb.copy()
+    rgb.paste(img, mask=img.getchannel("A"))
+    return np.array(rgb)
 
 
 def open_pose(path, img_name, view_id):
