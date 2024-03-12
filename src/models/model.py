@@ -3,11 +3,8 @@ import torch
 import numpy as np
 from PIL import Image
 import imageio
-import multiprocessing
-import time
 from einops import reduce
 import torch.nn.functional as F
-from functools import partial
 import pytorch_lightning as pl
 from torchvision import utils
 from src.utils.visualization_utils import (
@@ -16,7 +13,6 @@ from src.utils.visualization_utils import (
 from src.models.utils import unnormalize_to_zero_to_one
 from src.models.loss import GeodesicError
 from src.models.normal_kl_loss import DiagonalGaussianDistribution
-from src.lib3d.vsd import vsd_obj
 from src.utils.logging import get_logger, log_image, log_video
 
 logger = get_logger(__name__)
@@ -46,6 +42,7 @@ class PoseConditional(pl.LightningModule):
 
         # define testing config
         self.testing_config = testing_config
+        self.testing_category = "unseen"
 
         if optim_config.loss_type == "l1":
             self.loss = F.l1_loss
@@ -370,209 +367,14 @@ class PoseConditional(pl.LightningModule):
             )
             print(save_path)
 
-    def load_mesh(self, cad_dir):
-        import trimesh
-        import pyrender
-
-        logger.info("Loading cad to avoid haning in validation lightning (BUG to fix)")
-        self.tless_cad = {}
-        for obj_id in range(1, 31):
-            cad_path = cad_dir / f"obj_{obj_id:06d}.ply"
-            mesh = trimesh.load_mesh(cad_path)
-            mesh = pyrender.Mesh.from_trimesh(mesh)
-            self.tless_cad[obj_id] = mesh
-        logger.info("Loading mesh done!")
-
-    def eval_vsd(self, batch, data_name, save_path):
-        # visualize same loss as training
-        query = batch["query"]
-        batch_size = query.shape[0]
-        reference = batch["reference"]
-        relativeR = batch["gt_relativeR"]
-        loss = self.forward(query=query, relativeR=relativeR, reference=reference)
-        self.log(f"loss/val_{data_name}", loss)
-
-        # visualize reconstruction under GT pose
-        save_image_path = (
-            self.media_dir
-            / f"reconst_val_step{self.global_step}_rank{self.global_rank}.png"
-        )
-        _, pred_rgb = self.sample(reference=reference, relativeR=relativeR)
-        vis_imgs = [
-            unnormalize_to_zero_to_one(reference),
-            unnormalize_to_zero_to_one(batch["query"]),
-            pred_rgb,
-        ]
-        vis_imgs, ncol = put_image_to_grid(vis_imgs)
-        vis_imgs_resized = vis_imgs.clone()
-        vis_imgs_resized = F.interpolate(
-            vis_imgs_resized, (64, 64), mode="bilinear", align_corners=False
-        )
-        utils.save_image(
-            vis_imgs_resized,
-            save_image_path,
-            nrow=ncol * 4,
-        )
-        log_image(
-            logger=self.logger,
-            name=f"reconstruction/val_{data_name}",
-            path=save_image_path,
-        )
-        # retrieval templates
-        visualize = True if "gt_templates" in batch else False
-        gt_templates = None if not visualize else batch["gt_templates"]
-        all_relativeR = batch["all_relativeR"]
-        pred_feat, pred_rgb, vid_path = self.generate_templates(
-            reference=reference,
-            all_relativeR=all_relativeR,
-            gt_templates=gt_templates,
-            visualize=visualize,
-        )
-        similarity, nearest_idx = self.retrieval(query=query, template_feat=pred_feat)
-
-        # visualize prediction
-        if visualize:
-            save_image_path = (
-                self.media_dir
-                / f"retrieved_val_step{self.global_step}_rank{self.global_rank}.png"
-            )
-            retrieved_template = gt_templates[
-                torch.arange(0, batch_size, device=query.device), nearest_idx[:, 0]
-            ]
-            vis_imgs = [
-                unnormalize_to_zero_to_one(reference),
-                unnormalize_to_zero_to_one(batch["query"]),
-                unnormalize_to_zero_to_one(retrieved_template),
-            ]
-            vis_imgs, ncol = put_image_to_grid(vis_imgs)
-            vis_imgs_resized = vis_imgs.clone()
-            vis_imgs_resized = F.interpolate(
-                vis_imgs_resized, (64, 64), mode="bilinear", align_corners=False
-            )
-            utils.save_image(
-                vis_imgs_resized,
-                save_image_path,
-                nrow=ncol * 4,
-            )
-            log_image(
-                logger=self.logger,
-                name=f"retrieval/val_{data_name}",
-                path=str(save_image_path),
-            )
-            log_video(
-                logger=self.logger,
-                name=f"templates/val_{data_name}",
-                path=str(vid_path),
-            )
-        # getting VSD scores
-        evaluate_vsd = True
-        if evaluate_vsd:
-            template_poses = batch["template_poses"]
-            retrieved_R = template_poses[
-                torch.arange(0, batch_size, device=query.device)[:, None].repeat(
-                    1, nearest_idx.shape[1]
-                ),
-                nearest_idx,
-            ]
-            vsd_eval_inputs = {}
-            gt_translation = batch["query_translation"]
-            query_pose = batch["query_pose"]
-
-            vsd_eval_inputs["intrinsic"] = batch["intrinsic"].cpu().numpy()
-            vsd_eval_inputs["depth_path"] = batch["depth_path"]
-            vsd_eval_inputs["obj_id"] = batch["obj_id"].cpu().numpy()
-
-            pred_poses = torch.cat(
-                (
-                    retrieved_R,
-                    gt_translation[:, None, :, :].repeat(1, retrieved_R.shape[1], 1, 1),
-                ),
-                dim=3,
-            )  # B x N x 3 x 4
-            # adding [0, 0, 0, 1] to make it 4x4
-            pred_poses = torch.cat(
-                (
-                    pred_poses,
-                    torch.zeros(
-                        (batch_size, retrieved_R.shape[1], 1, 4), device=query.device
-                    ),
-                ),
-                dim=2,
-            )
-            pred_poses[:, :, 3, 3] = 1.0
-            vsd_eval_inputs["pred_poses"] = pred_poses.cpu().numpy()
-
-            gt_poses = torch.cat((query_pose, gt_translation), dim=2)
-            gt_poses = torch.cat(
-                (gt_poses, torch.zeros((batch_size, 1, 4), device=query.device)), dim=1
-            )
-            gt_poses[:, 3, 3] = 1.0
-            vsd_eval_inputs["gt_poses"] = gt_poses.cpu().numpy()
-            vsd_eval_inputs["mesh"] = [
-                self.tless_cad[int(id)] for id in batch["obj_id"].cpu().numpy()
-            ]
-            pool = multiprocessing.Pool(processes=self.trainer.num_workers)
-            vsd_obj_from_index = partial(vsd_obj, list_frame_data=vsd_eval_inputs)
-            start_time = time.time()
-            vsd_error = list(
-                tqdm(
-                    pool.imap_unordered(
-                        vsd_obj_from_index, range(len(vsd_eval_inputs["gt_poses"]))
-                    ),
-                    total=len(vsd_eval_inputs["gt_poses"]),
-                )
-            )
-            vsd_error = np.stack(vsd_error, axis=0)  # Bxk where k is top k retrieved
-            finish_time = time.time()
-            print(
-                f"Total time to render at rank {self.global_rank}",
-                finish_time - start_time,
-            )
-            final_scores = {}
-            for k in [1, 3, 5]:
-                best_vsd = np.min(vsd_error[:, :k], 1)
-                final_scores[f"top {k}, vsd_median"] = np.median(best_vsd)
-                for threshold in [0.3]:
-                    vsd_acc = (best_vsd <= threshold) * 100.0
-                    # same for median
-                    final_scores[f"top {k}, vsd_scores {threshold}"] = np.mean(vsd_acc)
-            self.log_score(final_scores, split_name=f"val_{data_name}")
-            np.save(save_path, vsd_error[:, 0])
-            print(vsd_error[:, 0], save_path)
-            return final_scores
-
     def validation_step(self, batch, idx):
         for idx_dataloader, data_name in enumerate(batch.keys()):
-            if data_name in ["shapeNet"]:
-                self.eval_geodesic(batch[data_name], data_name)
-            elif data_name in ["tless"]:
-                self.eval_vsd(batch[data_name], data_name)
+            self.eval_geodesic(batch[data_name], data_name)
 
     def test_step(self, batch, idx_batch):
-        for idx_dataloader, dataloader_name in enumerate(batch.keys()):
-            data_name, category = dataloader_name.split("_")
-            if data_name in ["tless"]:
-                save_path = (
-                    self.log_dir
-                    / f"vsd_{category}_batch{idx_batch}_rank_{self.global_rank}.npy"
-                )
-                self.eval_vsd(batch[dataloader_name], category, save_path=save_path)
-            else:
-
-                self.eval_geodesic(
-                    batch[dataloader_name],
-                    category,
-                    visualize=True,
-                    save_prediction=True,
-                )
-
-    def test_epoch_end_vsd(self, test_step_outputs):
-        # test_step_outputs is a list of dictionaries
-        final_scores = {}
-        for key in test_step_outputs[0].keys():
-            final_scores[key] = np.mean(([x[key] for x in test_step_outputs]))
-        self.logger.log_table(
-            "final",
-            columns=[k for k in final_scores.keys()],
-            data=[[v for v in final_scores.values()]],
+        self.eval_geodesic(
+            batch,
+            self.testing_category,
+            visualize=True,
+            save_prediction=True,
         )

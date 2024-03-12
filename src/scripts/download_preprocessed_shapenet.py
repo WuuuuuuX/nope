@@ -19,14 +19,14 @@ def download(cfg: DictConfig) -> None:
     os.makedirs(local_dir, exist_ok=True)
 
     if cfg.only_sample:
-        files = ["metaData_shapeNet.json", "image_samples.zip", "template_seen.zip"]
+        files = ["metaData_shapeNet.json", "image_samples.zip", "templates_seen.zip"]
     else:
         files = [
             "metaData_shapeNet.json",
             "images.zip",
-            "template_seen.zip",
-            "template_unseen_part1.zip",
-            "template_unseen_part2.zip",
+            "templates_seen.zip",
+            "templates_unseen_part1.zip",
+            "templates_unseen_part2.zip",
         ]
 
     for file in files:

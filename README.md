@@ -105,7 +105,7 @@ Here is the structure of $ROOT_DIR after downloading:
 <details><summary>Click to expand</summary>
 
 ```
-python test_shapeNet.py name_exp=test_shapeNet
+python test_shapeNet.py
 ```
 
 </details>

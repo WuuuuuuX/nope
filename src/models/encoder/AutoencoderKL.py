@@ -1,6 +1,7 @@
 import pytorch_lightning as pl
 import torch
 from diffusers import AutoencoderKL
+import os
 
 
 class VAE_StableDiffusion(pl.LightningModule):
@@ -13,10 +14,13 @@ class VAE_StableDiffusion(pl.LightningModule):
         **kwargs,
     ):
         super().__init__()
-        # self.encoder = AutoencoderKL.from_config(f"{pretrained_path}/config.json")
-        # self.encoder.load_state_dict(
-        #     torch.load(f"{pretrained_path}/diffusion_pytorch_model.bin")
-        # )
+        if not os.path.exists(pretrained_path):
+            self.encoder = AutoencoderKL.from_pretrained(
+                "runwayml/stable-diffusion-v1-5",
+                subfolder="vae",
+                torch_dtype=torch.float32,
+            )
+            self.encoder.save_pretrained(pretrained_path)
         self.encoder = AutoencoderKL.from_pretrained(pretrained_path)
         self.latent_dim = latent_dim
         self.name = name
@@ -49,19 +53,9 @@ class VAE_StableDiffusion(pl.LightningModule):
 
 
 if __name__ == "__main__":
-    from diffusers import DiffusionPipeline
+    from hydra.experimental import compose, initialize
+    from hydra.utils import instantiate
 
-    encoder = AutoencoderKL.from_pretrained(
-        "runwayml/stable-diffusion-v1-5",
-        subfolder="vae",
-        torch_dtype=torch.float32,
-    )
-    save_dir = "/home/nguyen/Documents/datasets/nope_project/pretrained/stable-diffusion-v1-5_vae.pth"
-    encoder.save_pretrained(save_dir)
-    encoder_reloaded = AutoencoderKL.from_pretrained(save_dir)
-    # torch.save(encoder.state_dict(), save_dir)
-    # repo_id = "runwayml/stable-diffusion-v1-5"
-    # pipe = DiffusionPipeline.from_pretrained(repo_id, safe_serialization=True)
-    # pipe.save_pretrained(
-    #     "/home/nguyen/Documents/datasets/nope_project//pretrained/stable-diffusion-v1-5_vae.pth"
-    # )
+    with initialize(config_path="../../../configs/"):
+        cfg = compose(config_name="train.yaml")
+    u_net = instantiate(cfg.model.u_net)

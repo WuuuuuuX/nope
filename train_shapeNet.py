@@ -7,7 +7,6 @@ from torch.utils.data import DataLoader
 from src.utils.weight import load_checkpoint
 import pytorch_lightning as pl
 from src.utils.dataloader import concat_dataloader
-from torch.utils.data import ConcatDataset
 from src.utils.logging import get_logger
 
 pl.seed_everything(2022)
@@ -80,6 +79,7 @@ def train(cfg: DictConfig):
     train_dataloaders = concat_dataloader({"shapeNet": train_dataloader})
 
     cfg.data.split = "unseen_training"
+    cfg.data.fast_evaluation = True
     val_dataloader = DataLoader(
         instantiate(cfg.data),
         batch_size=cfg.machine.batch_size,

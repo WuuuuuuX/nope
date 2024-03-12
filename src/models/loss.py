@@ -74,7 +74,7 @@ def so3_relative_angle_with_symmetry(pred, gt, symmetry):
 
 class GeodesicError(nn.Module):
     # credit https://github.com/martius-lab/beta-nll
-    def __init__(self, thresholds=[15]):
+    def __init__(self, thresholds=[30]):
         super(GeodesicError, self).__init__()
         self.thresholds = thresholds
 

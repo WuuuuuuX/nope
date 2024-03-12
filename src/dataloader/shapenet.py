@@ -61,7 +61,7 @@ class ShapeNet(Dataset):
             categories = train_categories
             num_cad_per_category = 1000 if self.split == "training" else 50
         else:
-            categories = self.split
+            categories = [self.split]
             num_cad_per_category = 100
 
         # keep only instances belong to correct split
@@ -106,6 +106,7 @@ class ShapeNet(Dataset):
         )
         # load indexes templates
         if fast_evaluation:
+            logger.info(f"Loaded {len(self.testing_indexes)} templates for evaluation!")
             self.testing_indexes = load_index_level0_in_level2("upper")
 
     def compute_relative_pose(self, query_pose, ref_pose):
@@ -152,7 +153,7 @@ class ShapeNet(Dataset):
                 template = self.img_transform(template)
 
                 template_pose = self.testing_templates_poses[idx]
-                relR, relR_inv = self.compute_relative_pose(query_pose, template_pose)
+                relR, relR_inv = self.compute_relative_pose(template_pose, ref_pose)
                 template_data["template_imgs"].append(template.permute(2, 0, 1))
                 template_data["template_relRs"].append(relR)
             template_data["template_imgs"] = torch.stack(
