@@ -152,9 +152,9 @@ class ShapeNet(Dataset):
                 template = self.img_transform(template)
 
                 template_pose = self.testing_templates_poses[idx]
-                relR, relR_inv = self.compute_relative_pose(template_pose, ref_pose)
+                template_relR, _ = self.compute_relative_pose(template_pose, ref_pose)
                 template_data["template_imgs"].append(template.permute(2, 0, 1))
-                template_data["template_relRs"].append(relR)
+                template_data["template_relRs"].append(template_relR)
             template_data["template_imgs"] = torch.stack(
                 template_data["template_imgs"]
             ).float()
