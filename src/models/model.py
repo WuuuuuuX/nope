@@ -79,11 +79,16 @@ class PoseConditional(pl.LightningModule):
                 self.optim_config.lr,
                 weight_decay=self.optim_config.weight_decay,
             )
-        return optimizer
-        # lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
-        #     optimizer, milestones=[10, 30, 50, 100], gamma=0.5
-        # )
-        # return [optimizer], [lr_scheduler]
+            lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(
+                optimizer, milestones=[10, 30, 50, 100], gamma=0.5
+            )
+        return [optimizer], [lr_scheduler]
+
+    def lr_scheduler_step(self, scheduler, optimizer_idx, metric):
+        scheduler.step()
+        optimizer = self.optimizers()
+        current_lr = optimizer.param_groups[0]["lr"]
+        logger.info(f"Epoch {self.current_epoch}, lr={current_lr}")
 
     def compute_loss(self, pred, gt):
         if self.loss is not None:
