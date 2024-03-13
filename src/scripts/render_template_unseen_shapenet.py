@@ -12,7 +12,7 @@ import glob
 import numpy as np
 from src.utils.inout import write_txt
 from src.utils.shapeNet_utils import test_categories
-from src.lib3d.utils import get_obj_poses_from_template_level
+from src.lib3d.numpy import get_obj_poses_from_template_level
 
 logger = get_logger(__name__)
 

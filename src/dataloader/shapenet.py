@@ -85,8 +85,7 @@ class ShapeNet(Dataset):
                     self.metaDatas.append(metaData_)
 
         self.metaDatas = convert_list_to_dataframe(self.metaDatas)
-        if not self.is_testing_split:  # shuffle the training set
-            self.metaDatas = self.metaDatas.sample(frac=1).reset_index(drop=True)
+        self.metaDatas = self.metaDatas.sample(frac=1).reset_index(drop=True)
         num_cads = sum([counters[cat] for cat in categories])
         logger.info(
             f"Loaded {len(self.metaDatas)} images for {num_cads} CAD models from split {self.split}!"
@@ -124,7 +123,7 @@ class ShapeNet(Dataset):
 
     def __getitem__(self, index):
         obj_id = self.metaDatas["obj_id"].iloc[index]
-        obj_dir = self.root_dir / "test" / f"{obj_id:06d}"
+        obj_dir = self.root_dir / "images" / f"{obj_id:06d}"
         view_id = int(self.metaDatas["view_id"].iloc[index])
         symmetry = int(self.metaDatas["symmetry"].iloc[index])
         ref_view_id = np.random.choice(self.num_views_per_instance)
@@ -181,6 +180,7 @@ class ShapeNet(Dataset):
 if __name__ == "__main__":
     import logging
     from torchvision.utils import save_image
+    from src.models.utils import unnormalize_to_zero_to_one
 
     logging.basicConfig(level=logging.INFO)
     from hydra.experimental import compose, initialize
@@ -191,8 +191,15 @@ if __name__ == "__main__":
         cfg = compose(config_name="train.yaml")
     dataset = ShapeNet(cfg.data.root_dir, "unseen_training")
     for i in range(10):
-        data = dataset[i]
-        save_image(data["query"], save_dir / f"{i:06d}_query.png")
-        save_image(data["ref"], save_dir / f"{i:06d}_ref.png")
-        save_image(data["template_imgs"], save_dir / f"{i:06d}_gt_template.png")
+        batch = dataset[i]
+        save_image(
+            unnormalize_to_zero_to_one(batch["query"]), save_dir / f"{i:06d}_query.png"
+        )
+        save_image(
+            unnormalize_to_zero_to_one(batch["ref"]), save_dir / f"{i:06d}_ref.png"
+        )
+        save_image(
+            unnormalize_to_zero_to_one(batch["template_imgs"]),
+            save_dir / f"{i:06d}_gt_template.png",
+        )
         logger.info("-----------------")

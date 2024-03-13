@@ -18,16 +18,14 @@ def download(cfg: DictConfig) -> None:
     local_dir = root_dir / "datasets" / "shapenet"
     os.makedirs(local_dir, exist_ok=True)
 
-    if cfg.only_sample:
-        files = ["metaData_shapeNet.json", "image_samples.zip", "templates_seen.zip"]
-    else:
-        files = [
-            "metaData_shapeNet.json",
-            "images.zip",
-            "templates_seen.zip",
-            "templates_unseen_part1.zip",
-            "templates_unseen_part2.zip",
-        ]
+    files = [
+        "metaData_shapeNet.json",
+        "images.zip",
+        "templates_seen_part1.zip",
+        "templates_seen_part2.zip",
+        "templates_unseen_part1.zip",
+        "templates_unseen_part2.zip",
+    ]
 
     for file in files:
         # download file

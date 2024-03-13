@@ -70,9 +70,6 @@ We provide both pre-rendered datasets and scripts to render the datasets from sc
 ```
 # Download all the datasets:
 python -m src.scripts.download_preprocessed_shapenet
-
-# Download only a subset of samples (unseen instances of training categories):
-python -m src.scripts.download_preprocessed_shapenet only_sample=True
 ```
 
 #### Option 2: Render the datasets from scratch:
