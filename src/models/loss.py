@@ -113,7 +113,7 @@ class GeodesicError(nn.Module):
                             top_error <= self.thresholds[i]
                         ).float().mean() * 100
                         results[f"top{idx_k+1}, median"] = top_error.median()
-            return errors[:, 0], results
+            return errors, results
 
 
 if __name__ == "__main__":

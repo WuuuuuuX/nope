@@ -14,6 +14,7 @@ from src.models.utils import unnormalize_to_zero_to_one
 from src.models.loss import GeodesicError
 from src.models.normal_kl_loss import DiagonalGaussianDistribution
 from src.utils.logging import get_logger, log_image, log_video
+import glob
 
 logger = get_logger(__name__)
 
@@ -259,7 +260,9 @@ class PoseConditional(pl.LightningModule):
             _, nearest_idx = similarity.topk(k=5, dim=1)  # B x 1
             return similarity, nearest_idx
 
-    def eval_geodesic(self, batch, data_name, visualize=True, save_prediction=False):
+    def eval_geodesic(
+        self, batch, data_name, idx_batch, visualize=True, save_prediction=False
+    ):
         if not (
             hasattr(self.u_net.encoder, "decode_latent")
             and callable(self.u_net.encoder.decode_latent)
@@ -272,7 +275,13 @@ class PoseConditional(pl.LightningModule):
         relR = batch["relR"]
         batch_size = query.shape[0]
         loss = self.forward(query=query, ref=ref, relR=relR)
-        self.log(f"loss/val_{data_name}", loss)
+        self.log(
+            f"loss/val_{data_name}",
+            loss,
+            sync_dist=True,
+            on_step=True,
+            on_epoch=True,
+        )
 
         if visualize:
             # visualize reconstruction under GT pose
@@ -322,8 +331,7 @@ class PoseConditional(pl.LightningModule):
         if visualize:
             # visualize prediction
             save_image_path = (
-                self.media_dir
-                / f"retrieved_step{self.global_step}_rank{self.global_rank}.png"
+                self.media_dir / f"retrieved_step{idx_batch}_rank{self.global_rank}.png"
             )
             retrieved_template = template_imgs[
                 torch.arange(0, batch_size, device=query.device), nearest_idx[:, 0]
@@ -348,6 +356,7 @@ class PoseConditional(pl.LightningModule):
                 name=f"retrieval/val_{data_name}",
                 path=str(save_image_path),
             )
+            print(save_image_path)
         template_poses = batch["template_Rs"][0]
         error, acc = self.metric(
             predR=template_poses[nearest_idx],
@@ -358,9 +367,7 @@ class PoseConditional(pl.LightningModule):
 
         # save predictions
         if save_prediction:
-            save_path = (
-                self.log_dir / f"pred_step{self.global_step}_rank{self.global_rank}"
-            )
+            save_path = self.log_dir / f"pred_step{idx_batch}_rank{self.global_rank}"
             vis_imgs = vis_imgs.cpu().numpy()
             query_pose = batch["queryR"].cpu().numpy()
             similarity = similarity.cpu().numpy()
@@ -370,16 +377,42 @@ class PoseConditional(pl.LightningModule):
                 query_pose=query_pose,
                 similarity=similarity,
             )
-            print(save_path)
+        # save errors to calculate mean later
+        np.save(
+            self.log_dir / f"error_step{idx_batch}_rank{self.global_rank}",
+            error.cpu().numpy(),
+        )
+        # return acc
 
     def validation_step(self, batch, idx):
         for idx_dataloader, data_name in enumerate(batch.keys()):
-            self.eval_geodesic(batch[data_name], data_name)
+            self.eval_geodesic(batch[data_name], data_name, idx)
 
     def test_step(self, batch, idx_batch):
-        self.eval_geodesic(
+        return self.eval_geodesic(
             batch,
             self.testing_category,
+            idx_batch=idx_batch,
             visualize=True,
             save_prediction=True,
         )
+
+    def test_epoch_end(self, outputs):
+        if self.global_rank == 0:  # only rank 0 process
+            error_paths = glob.glob(str(self.log_dir / "error_step*"))
+            error_paths = sorted(error_paths)
+            errors = []
+            for path in error_paths:
+                error = np.load(path)
+                errors.append(error)
+            errors = np.concatenate(errors, axis=0)
+
+            final_results = {}
+            for idx_k in [0, 2, 4]:
+                top_error = np.min(errors[:, : idx_k + 1], axis=1)
+                acc = (top_error <= 30) * 100
+                final_results[f"top{idx_k+1}, accuracy_30"] = np.mean(acc)
+                final_results[f"top{idx_k+1}, median"] = np.median(top_error)
+            logger.info(
+                f"Number instances: {len(errors)}, Final results: {final_results}"
+            )
