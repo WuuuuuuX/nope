@@ -89,7 +89,7 @@ def render(cfg: DictConfig) -> None:
 
         norm = np.linalg.norm(obj_template_poses[0, :3, 3])
         tmp = np.copy(obj_template_poses)
-        tmp[:, :3, 3] *= 1 / norm * 1.2 * diameter
+        tmp[:, :3, 3] *= 1 / norm * 0.6 * diameter
 
         obj_dir = template_root_dir / f"{metaData['index']:06d}"
         obj_dir.mkdir(parents=True, exist_ok=True)
