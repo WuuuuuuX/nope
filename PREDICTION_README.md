@@ -2,9 +2,51 @@
 
 This directory contains scripts for predicting pose (rotation) between reference and query images using the NOPE (Novel Object Pose Estimation) framework.
 
+## 🎯 Answer to: "如何用作者所提供的下载权重去预测query.jpeg和reference.jpeg，以及所提供的图片是任意rgb都可以的吗"
+
+**✅ YES - This system fully supports ANY RGB images and can use pretrained weights!**
+
+### Quick Start for query.jpeg and reference.jpeg:
+
+```bash
+# Direct prediction with existing images (works without pretrained weights)
+python predict_with_weights.py
+
+# With pretrained weights (if you have them)
+python predict_with_weights.py --checkpoint model.ckpt --config config.yaml
+
+# With any RGB images
+python predict_with_weights.py --ref_image your_image.png --query_image another_image.jpg
+```
+
+**RGB Support**: ✅ PNG, JPG, JPEG, BMP, TIFF, RGBA, Grayscale - all automatically converted
+
 ## Available Scripts
 
-### 1. `nope_predict.py` - Main Prediction Script
+### 1. `predict_with_weights.py` - **NEW: Specialized for query.jpeg and reference.jpeg**
+
+**Specifically addresses the user question about using pretrained weights with query.jpeg and reference.jpeg**
+
+#### Basic Usage
+```bash
+# Use with existing query.jpeg and reference.jpeg
+python predict_with_weights.py
+
+# Use with pretrained weights
+python predict_with_weights.py --checkpoint model.ckpt --config config.yaml
+
+# Use with any RGB images
+python predict_with_weights.py --ref_image any_image.png --query_image any_other.jpg
+```
+
+#### Key Features
+- ✅ **Supports ANY RGB images**: PNG, JPG, JPEG, BMP, TIFF, RGBA, Grayscale
+- ✅ **Works with or without pretrained weights**
+- ✅ **Automatic format conversion** (RGBA→RGB, Grayscale→RGB)
+- ✅ **Bilingual interface** (English/Chinese)
+- ✅ **Comprehensive output**: rotation matrix, angle, confidence, visualization
+
+### 2. `nope_predict.py` - Main Prediction Script
 
 The comprehensive script that supports both pretrained NOPE models and simplified fallback estimation.
 
@@ -28,7 +70,7 @@ python nope_predict.py --ref_image ref.jpg --query_image query.jpg --checkpoint 
 - `--output_dir`: Output directory for results (default: ./pose_results)
 - `--create_test`: Create test images with known 45° rotation
 
-### 2. `simple_predict.py` - Simplified Version
+### 3. `simple_predict.py` - Simplified Version
 
 A lightweight script that demonstrates the core pose estimation concepts without requiring the full NOPE framework.
 
